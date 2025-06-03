@@ -15,7 +15,7 @@
 ## Overview
 
 The Fooddie Frontend project is a food delivery website frontend built using Next.js. The project is structured for maintainability and scalability, with a clear separation of concerns across different components and modules.  
-This website is designed with responsive design in mind. Each component is carefully adjusted to fit common screen sizes, including iPhone 13 Mini (375x812) and Desktop (1920x1080).
+This website is designed with responsive design in mind. 
 
 ## Project Structure
 
@@ -84,22 +84,3 @@ To run the Fooddie frontend app locally:
    npm run dev
    ```
 3. Open [http://localhost:3000](http://localhost:3000) in your browser to view the app.
-
-## TODO List
-
-### Homepage
-
-- [ ] Implement the homepage with the following sections:
-  - [x] Hero section
-  - [x] Collection section
-  - [x] Combo section
-  - [x] Coaching section
-  - [x] Promotion section
-  - [x] Testimonial section
-  - [x] Blog section
-  - [x] Benefit section
-  - [ ] Experience section
-  - [x] CTA section
-  - [x] Sticky banner
-  - [x] Incoming program section
-  - [x] Footer section
