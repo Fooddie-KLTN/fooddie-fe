@@ -27,19 +27,6 @@ src/
 │   ├── page.tsx
 │   └── layout.tsx
 ├── components/
-│   ├── home/
-│   │   ├── benefit.tsx
-│   │   ├── blog.tsx
-│   │   ├── coaching.tsx
-│   │   ├── collection.tsx
-│   │   ├── combo.tsx
-│   │   ├── cta.tsx
-│   │   ├── experience.tsx
-│   │   ├── incoming.tsx
-│   │   ├── promotion.tsx
-│   │   ├── sticky-banner.tsx
-│   │   ├── testimonial.tsx
-│   │   └── ...
 │   ├── ui/
 │   │   ├── brand.tsx
 │   │   ├── button.tsx
