@@ -1,35 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CloudUploadIcon, FilterIcon, PlusIcon, SortAscIcon, Edit2Icon, TrashIcon } from "lucide-react";
+import { CloudUploadIcon, FilterIcon, PlusIcon, SortAscIcon, TrashIcon } from "lucide-react";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
+import { adminService, PromotionResponse, PromotionType } from "@/api/admin";
 
 import Header from "@/app/admin/(admin-panel)/_components/header";
-import NavigationBar from "@/app/admin/(admin-panel)/_components/tab";
 import SearchAndFilters from "@/app/admin/(admin-panel)/_components/search-and-filter";
 import Table, { Column, Action } from "@/app/admin/(admin-panel)/_components/table";
 import Pagination from "@/app/admin/(admin-panel)/_components/pagination";
 import AddPromotionForm from "./_components/add-promotion-modal";
+import { Promotion } from "@/interface";
+import { useAuth } from "@/context/auth-context";
 
 type SortDirection = 'asc' | 'desc' | null;
 
-interface Promotion {
-  id: string;
-  description: string;
-  discountPercent: number;
-  code: string;
-  orders: any[];
-}
-
 const PromotionsAdminPage: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
+  const [, setIsCsvModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<keyof Promotion | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
-  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [promotions, setPromotions] = useState<PromotionResponse[]>([]);
   const [selectedPromotions, setSelectedPromotions] = useState<string[]>([]);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -38,19 +32,31 @@ const PromotionsAdminPage: React.FC = () => {
   });
 
   const isDesktop = useMediaQuery("(min-width: 768px)");
+  const { getToken } = useAuth();
+
+  const fetchPromotions = async () => {
+    const token = getToken();
+    if (!token) return;
+    
+    try {
+      const response = await adminService.Promotion.getPromotions(token, pagination.currentPage, pagination.pageSize);
+      setPromotions(response);
+      setPagination((prev) => ({
+        ...prev,
+        totalPages: Math.ceil(response.length / pagination.pageSize),
+      }));
+    } catch (err) {
+      console.error("Failed to fetch promotions:", err);
+      setPromotions([]);
+    }
+  };
 
   useEffect(() => {
-    const data = localStorage.getItem("promotions");
-    const parsed = data ? JSON.parse(data) : [];
-    setPromotions(parsed);
-    setPagination((prev) => ({
-      ...prev,
-      totalPages: Math.ceil(parsed.length / prev.pageSize),
-    }));
-  }, []);
+    fetchPromotions();
+  }, [pagination.currentPage, pagination.pageSize]);
 
-  const filteredPromotions = promotions.filter((promo) =>
-    promo.code.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredPromotions = (promotions ?? []).filter((promo) =>
+    promo.code?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const sortedPromotions = [...filteredPromotions];
@@ -58,30 +64,20 @@ const PromotionsAdminPage: React.FC = () => {
     sortedPromotions.sort((a, b) => {
       const aValue = a[sortField];
       const bValue = b[sortField];
-  
-      // Handle string comparison
+
       if (typeof aValue === "string" && typeof bValue === "string") {
         return sortDirection === "asc"
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
-  
-      // Handle number comparison
+
       if (typeof aValue === "number" && typeof bValue === "number") {
         return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
       }
-  
-      // Handle array length comparison (e.g. orders)
-      if (Array.isArray(aValue) && Array.isArray(bValue)) {
-        return sortDirection === "asc"
-          ? aValue.length - bValue.length
-          : bValue.length - aValue.length;
-      }
-  
-      return 0; // fallback for unsupported types
+
+      return 0;
     });
   }
-  
 
   const paginatedData = sortedPromotions.slice(
     (pagination.currentPage - 1) * pagination.pageSize,
@@ -119,33 +115,103 @@ const PromotionsAdminPage: React.FC = () => {
     });
   };
 
-  const handleDelete = (id: string) => {
-    const updated = promotions.filter((promo) => promo.id !== id);
-    localStorage.setItem("promotions", JSON.stringify(updated));
-    setPromotions(updated);
+  const handleDelete = async (id: string) => {
+    const token = getToken();
+    if (!token) return;
+    
+    try {
+      await adminService.Promotion.deletePromotion(token, id);
+      await fetchPromotions(); // Refresh the list
+    } catch (err) {
+      console.error("Failed to delete promotion:", err);
+    }
   };
 
-  const promotionColumns: Column<Promotion>[] = [
-    { header: "Code", accessor: "code", sortable: true },
-    { header: "Description", accessor: "description", sortable: true },
-    { header: "Discount (%)", accessor: "discountPercent", sortable: true },
-    {
-      header: "Order Count",
-      accessor: "orders",
-      sortable: false,
-      renderCell: (_, row) => row.orders.length,
+  const handlePromotionAdded = () => {
+    fetchPromotions(); // Refresh the list when a new promotion is added
+    setIsAddModalOpen(false);
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString('vi-VN');
+  };
+
+  const formatCurrency = (amount?: number) => {
+    if (!amount) return "N/A";
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
+    }).format(amount);
+  };
+
+  const getPromotionTypeLabel = (type: PromotionType) => {
+    switch (type) {
+      case PromotionType.FOOD_DISCOUNT:
+        return "Giảm giá món ăn";
+      case PromotionType.SHIPPING_DISCOUNT:
+        return "Giảm phí vận chuyển";
+      default:
+        return "N/A";
+    }
+  };
+
+  const promotionColumns: Column<PromotionResponse>[] = [
+    { header: "Mã", accessor: "code", sortable: true },
+    { header: "Mô tả", accessor: "description", sortable: true },
+    { 
+      header: "Loại khuyến mãi", 
+      accessor: "type", 
+      sortable: true,
+      renderCell: (_, row) => getPromotionTypeLabel(row.type)
+    },
+    { 
+      header: "Giảm giá (%)", 
+      accessor: "discountPercent", 
+      sortable: true,
+      renderCell: (_, row) => row.discountPercent ? `${row.discountPercent}%` : "N/A"
+    },
+    { 
+      header: "Giảm giá (VND)", 
+      accessor: "discountAmount", 
+      sortable: true,
+      renderCell: (_, row) => formatCurrency(row.discountAmount)
+    },
+    { 
+      header: "Đơn tối thiểu", 
+      accessor: "minOrderValue", 
+      sortable: true,
+      renderCell: (_, row) => formatCurrency(row.minOrderValue)
+    },
+    { 
+      header: "Giảm tối đa", 
+      accessor: "maxDiscountAmount", 
+      sortable: true,
+      renderCell: (_, row) => formatCurrency(row.maxDiscountAmount)
+    },
+    { 
+      header: "Ngày bắt đầu", 
+      accessor: "startDate", 
+      sortable: true,
+      renderCell: (_, row) => formatDate(row.startDate)
+    },
+    { 
+      header: "Ngày kết thúc", 
+      accessor: "endDate", 
+      sortable: true,
+      renderCell: (_, row) => formatDate(row.endDate)
+    },
+    { 
+      header: "Sử dụng", 
+      accessor: "numberOfUsed", 
+      sortable: true,
+      renderCell: (_, row) => `${row.numberOfUsed || 0}${row.maxUsage ? `/${row.maxUsage}` : ''}`
     },
   ];
-  
 
   const promotionActions: Action[] = [
     {
-      label: "Edit",
-      icon: <Edit2Icon className="h-4 w-4" />,
-      onClick: (id) => console.log("Edit", id),
-    },
-    {
-      label: "Delete",
+      label: "Xóa",
       icon: <TrashIcon className="h-4 w-4" />,
       onClick: (id) => handleDelete(id),
     },
@@ -195,7 +261,7 @@ const PromotionsAdminPage: React.FC = () => {
       />
 
       <div className="overflow-x-auto">
-        <Table
+        <Table<PromotionResponse>
           columns={promotionColumns}
           data={paginatedData}
           selectable={true}
@@ -224,22 +290,21 @@ const PromotionsAdminPage: React.FC = () => {
         <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
           <DialogContent className="p-0 h-screen w-screen overflow-auto">
             <DialogTitle className="sr-only">Thêm mã mới</DialogTitle>
-            <AddPromotionForm onClose={() => setIsAddModalOpen(false)} />
+            <AddPromotionForm onClose={handlePromotionAdded} />
           </DialogContent>
         </Dialog>
       ) : (
         <Drawer open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
           <DrawerContent className="h-screen p-0 overflow-auto">
             <DialogTitle className="sr-only">Thêm mã mới</DialogTitle>
-            <AddPromotionForm onClose={() => setIsAddModalOpen(false)} />
+            <AddPromotionForm onClose={handlePromotionAdded} />
           </DrawerContent>
         </Drawer>
       )}
-
-      {/* Modal Thêm nhiều */}
-      
     </div>
   );
 };
 
 export default PromotionsAdminPage;
+
+

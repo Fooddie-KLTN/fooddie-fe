@@ -173,12 +173,25 @@ export interface OrderDetail {
   price: number | string;
   note?: string;
 }
+export enum PromotionType {
+  FOOD_DISCOUNT = 'FOOD_DISCOUNT',
+  SHIPPING_DISCOUNT = 'SHIPPING_DISCOUNT'
+}
+
 export interface Promotion {
   id: string;
   code: string;
   description?: string;
+  type: PromotionType;
   discountPercent?: number;
-  // ...add more fields if needed
+  discountAmount?: number;
+  minOrderValue?: number;
+  maxDiscountAmount?: number;
+  image?: string;
+  startDate?: Date;
+  endDate?: Date;
+  numberOfUsed?: number;
+  maxUsage?: number;
 }
 
 export interface Order {

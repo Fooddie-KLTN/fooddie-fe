@@ -1,47 +1,8 @@
 // adminApi.ts
 import { apiRequest } from "./base-api";
 
-/**
- * Dữ liệu để tạo khóa học mới
- * @interface
- * @property {string} name - Tên khóa học
- * @property {string} lecturerId - ID của giảng viên phụ trách
- * @property {string} [type] - Loại khóa học (tùy chọn)
- * @property {number} [duration] - Thời lượng khóa học tính bằng giờ (tùy chọn)
- * @property {string} [shortDescription] - Mô tả ngắn gọn về khóa học (tùy chọn)
- * @property {string} [description] - Mô tả chi tiết về khóa học (tùy chọn)
- * @property {number} [price] - Giá khóa học (tùy chọn)
- */
-interface CreateCourseDto {
-    name: string;
-    lecturerId: string;
-    type?: string;
-    duration?: number;
-    shortDescription?: string;
-    description?: string;
-    price?: number;
-}
 
-/**
- * Dữ liệu để cập nhật khóa học
- * @interface
- * @property {string} [name] - Tên khóa học
- * @property {string} [lecturerId] - ID của giảng viên phụ trách
- * @property {string} [type] - Loại khóa học
- * @property {number} [duration] - Thời lượng khóa học tính bằng giờ
- * @property {string} [shortDescription] - Mô tả ngắn gọn về khóa học
- * @property {string} [description] - Mô tả chi tiết về khóa học
- * @property {number} [price] - Giá khóa học
- */
-interface UpdateCourseDto {
-    name?: string;
-    lecturerId?: string;
-    type?: string;
-    duration?: number;
-    shortDescription?: string;
-    description?: string;
-    price?: number;
-}
+
 
 /**
  * Thông tin người dùng trả về từ API
@@ -86,28 +47,7 @@ interface RoleResponse {
     permissions: string[];
 }
 
-/**
- * Thông tin khóa học trả về từ API
- * @interface
- * @property {string} id - Mã định danh của khóa học
- * @property {string} name - Tên khóa học
- * @property {string} lecturerId - ID của giảng viên phụ trách
- * @property {string} [type] - Loại khóa học
- * @property {number} [duration] - Thời lượng khóa học tính bằng giờ
- * @property {string} [shortDescription] - Mô tả ngắn gọn về khóa học
- * @property {string} [description] - Mô tả chi tiết về khóa học
- * @property {number} [price] - Giá khóa học
- */
-interface CourseResponse {
-    id: string;
-    name: string;
-    lecturerId: string;
-    type?: string;
-    duration?: number;
-    shortDescription?: string;
-    description?: string;
-    price?: number;
-}
+
 
 interface StoreResponse {
     id: string;
@@ -172,6 +112,64 @@ interface StoreResponse {
     }[];
   }
   
+
+export enum PromotionType {
+  FOOD_DISCOUNT = 'FOOD_DISCOUNT',
+  SHIPPING_DISCOUNT = 'SHIPPING_DISCOUNT'
+}
+
+export interface PromotionResponse {
+  id: string;
+  code: string;
+  description?: string;
+  type: PromotionType;
+  discountPercent?: number;
+  discountAmount?: number;
+  minOrderValue?: number;
+  maxDiscountAmount?: number;
+  image?: string;
+  startDate?: string; // ISO string from API
+  endDate?: string;   // ISO string from API
+  numberOfUsed?: number;
+  maxUsage?: number;
+}
+
+interface CreatePromotionDto {
+  code: string;
+  description?: string;
+  type: PromotionType;
+  discountPercent?: number;
+  discountAmount?: number;
+  minOrderValue?: number;
+  maxDiscountAmount?: number;
+  image?: string;
+  startDate?: string; // ISO string to API
+  endDate?: string;   // ISO string to API
+  maxUsage?: number;
+}
+
+interface UpdatePromotionDto {
+  code?: string;
+  description?: string;
+  type?: PromotionType;
+  discountPercent?: number;
+  discountAmount?: number;
+  minOrderValue?: number;
+  maxDiscountAmount?: number;
+  image?: string;
+  startDate?: string; // ISO string to API
+  endDate?: string;   // ISO string to API
+  maxUsage?: number;
+}
+
+// Add missing interface
+interface GetPromotionsResponse {
+  items: PromotionResponse[];
+  totalItems: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
 
 /**
  * Các dịch vụ API cho phần quản trị hệ thống
@@ -241,64 +239,6 @@ export const adminService = {
         },        
     },
 
-    /**
-     * Các phương thức quản lý khóa học
-     * 
-     * @namespace
-     */
-    Course: {
-        /**
-         * Tạo một khóa học mới
-         * 
-         * @param {string} token - Token xác thực của admin
-         * @param {CreateCourseDto} data - Thông tin khóa học cần tạo
-         * @returns {Promise<CourseResponse>} - Thông tin khóa học sau khi tạo
-         * @throws {Error} Khi không thể kết nối với máy chủ hoặc dữ liệu không hợp lệ
-         */
-        async createCourse(token: string, data: CreateCourseDto): Promise<CourseResponse> {
-            try {
-                return await apiRequest<CourseResponse>('/courses', 'POST', { data, token });
-            } catch (error) {
-                console.error('Lỗi API quản trị:', error);
-                throw error;
-            }
-        },
-
-        /**
-         * Cập nhật thông tin khóa học
-         * 
-         * @param {string} token - Token xác thực của admin
-         * @param {string} id - ID của khóa học cần cập nhật
-         * @param {UpdateCourseDto} data - Thông tin cần cập nhật
-         * @returns {Promise<CourseResponse>} - Thông tin khóa học sau khi cập nhật
-         * @throws {Error} Khi không thể kết nối với máy chủ hoặc không tìm thấy khóa học
-         */
-        async updateCourse(token: string, id: string, data: UpdateCourseDto): Promise<CourseResponse> {
-            try {
-                return await apiRequest<CourseResponse>(`/courses/${id}`, 'PUT', { data, token });
-            } catch (error) {
-                console.error('Lỗi API quản trị:', error);
-                throw error;
-            }
-        },
-
-        /**
-         * Xóa một khóa học
-         * 
-         * @param {string} token - Token xác thực của admin
-         * @param {string} id - ID của khóa học cần xóa
-         * @returns {Promise<void>} - Không có dữ liệu trả về nếu thành công
-         * @throws {Error} Khi không thể kết nối với máy chủ hoặc không tìm thấy khóa học
-         */
-        async deleteCourse(token: string, id: string): Promise<void> {
-            try {
-                return await apiRequest<void>(`/courses/${id}`, 'DELETE', { token });
-            } catch (error) {
-                console.error('Lỗi API quản trị:', error);
-                throw error;
-            }
-        },
-    },
     Store: {
       async getStores(
         token: string,
@@ -404,6 +344,34 @@ export const adminService = {
         async getMyOrders(token: string): Promise<OrderResponse[]> {
           return await apiRequest<OrderResponse[]>('/orders/my', 'GET', { token });
         },
+      },
+      Promotion: {
+        async getPromotions(token: string, page = 1, pageSize = 10): Promise<PromotionResponse[]> {
+      try {
+        const response = await apiRequest<PromotionResponse[] | GetPromotionsResponse>("/promotions", "GET", {
+          token,
+          query: { page, pageSize },
+        });
+        
+        // Handle both array and paginated response
+        if (Array.isArray(response)) {
+          return response;
+        } else {
+          return response.items;
+        }
+      } catch (error) {
+        console.error("Error fetching promotions:", error);
+        throw error;
       }
-      
+    },
+    async createPromotion(token: string, data: CreatePromotionDto): Promise<PromotionResponse> {
+      return await apiRequest<PromotionResponse>("/promotions", "POST", { token, data });
+    },
+    async updatePromotion(token: string, id: string, data: UpdatePromotionDto): Promise<PromotionResponse> {
+      return await apiRequest<PromotionResponse>(`/promotions/${id}`, "PUT", { token, data });
+    },
+    async deletePromotion(token: string, id: string): Promise<void> {
+      await apiRequest<void>(`/promotions/${id}`, "DELETE", { token });
+    },
+  }
 };
