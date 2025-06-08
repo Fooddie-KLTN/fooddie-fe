@@ -116,6 +116,31 @@ export const guestService = {
         ): Promise<PaginatedResponse<FoodPreview>> {
             return apiRequest<PaginatedResponse<FoodPreview>>(`/foods/search`, "GET", { query: { query, page, pageSize, lat, lng, radius } });
         },
+        async searchFoodsByName(
+            name: string,
+            page: number = 1,
+            pageSize: number = 10,
+            lat: number = 10.7769,
+            lng: number = 106.7009,
+            radius: number = 5,
+            categoryIds?: string[],
+            minPrice?: number,
+            maxPrice?: number
+        ): Promise<PaginatedResponse<FoodPreview>> {
+            return apiRequest<PaginatedResponse<FoodPreview>>(`/foods/by-name`, "GET", {
+                query: {
+                    name,
+                    page,
+                    pageSize,
+                    lat,
+                    lng,
+                    radius,
+                    ...(categoryIds && categoryIds.length > 0 ? { categoryIds: categoryIds.join(",") } : {}),
+                    ...(minPrice !== undefined ? { minPrice } : {}),
+                    ...(maxPrice !== undefined ? { maxPrice } : {}),
+                }
+            });
+        },
     },
     restaurant: {
         async getRestaurants(
