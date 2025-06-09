@@ -83,6 +83,8 @@ export default function NavigationItems({
             // Dropdown navigation item
             <div className="relative">
               <button
+                title="Toggle dropdown"
+                type="button"
                 className="w-full font-semibold flex items-center justify-between gap-1 text-teriary text-base p-2 rounded-md hover:bg-gray-50 transition-colors"
                 onClick={() => toggleDropdown(idx)}
                 aria-expanded={

@@ -89,6 +89,20 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      keyframes: {
+        "fade-in-right": {
+          "0%": { opacity: "0", transform: "translateX(40px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        "fade-in-left": {
+          "0%": { opacity: "0", transform: "translateX(-40px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+      },
+      animation: {
+        "fade-in-right": "fade-in-right 0.5s",
+        "fade-in-left": "fade-in-left 0.5s",
+      },
     },
   },
   plugins: [tailwindAnimate],

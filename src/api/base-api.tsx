@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Thực hiện yêu cầu HTTP đến API backend và xử lý phản hồi.
@@ -122,12 +123,18 @@ export async function apiRequest<T>(
 
   // Thêm tham số query vào URL nếu có
   if (options?.query) {
+    // Only include keys with defined values
+    const filteredQuery = Object.fromEntries(
+      Object.entries(options.query).filter(([_, value]) => value !== undefined && value !== null)
+    );
     const queryString = new URLSearchParams(
       Object.fromEntries(
-        Object.entries(options.query).map(([key, value]) => [key, value.toString()])
+        Object.entries(filteredQuery).map(([key, value]) => [key, value.toString()])
       )
     ).toString();
-    url += `?${queryString}`;
+    if (queryString) {
+      url += `?${queryString}`;
+    }
   }
 
   // Thực hiện yêu cầu

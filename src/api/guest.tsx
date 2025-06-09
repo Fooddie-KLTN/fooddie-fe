@@ -1,6 +1,23 @@
 import { apiRequest } from "./base-api";
-import { FoodPreview, FoodDetail, Restaurant, Category } from "../interface";
+import { FoodPreview, FoodDetail, Restaurant, Category, PromotionType } from "../interface";
 import { PaginatedResponse } from "./response.interface";
+
+// Add promotion interface for guest service
+export interface GuestPromotionResponse {
+  id: string;
+  code: string;
+  description?: string;
+  type: PromotionType;
+  discountPercent?: number;
+  discountAmount?: number;
+  minOrderValue?: number;
+  maxDiscountAmount?: number;
+  image?: string;
+  startDate?: string;
+  endDate?: string;
+  numberOfUsed?: number;
+  maxUsage?: number;
+}
 
 export const guestService = {
     food: {
@@ -99,6 +116,31 @@ export const guestService = {
         ): Promise<PaginatedResponse<FoodPreview>> {
             return apiRequest<PaginatedResponse<FoodPreview>>(`/foods/search`, "GET", { query: { query, page, pageSize, lat, lng, radius } });
         },
+        async searchFoodsByName(
+            name: string,
+            page: number = 1,
+            pageSize: number = 10,
+            lat: number = 10.7769,
+            lng: number = 106.7009,
+            radius: number = 5,
+            categoryIds?: string[],
+            minPrice?: number,
+            maxPrice?: number
+        ): Promise<PaginatedResponse<FoodPreview>> {
+            return apiRequest<PaginatedResponse<FoodPreview>>(`/foods/by-name`, "GET", {
+                query: {
+                    name,
+                    page,
+                    pageSize,
+                    lat,
+                    lng,
+                    radius,
+                    ...(categoryIds && categoryIds.length > 0 ? { categoryIds: categoryIds.join(",") } : {}),
+                    ...(minPrice !== undefined ? { minPrice } : {}),
+                    ...(maxPrice !== undefined ? { maxPrice } : {}),
+                }
+            });
+        },
     },
     restaurant: {
         async getRestaurants(
@@ -162,6 +204,52 @@ export const guestService = {
         },
         async getCategoryById(id: string): Promise<Category> {
             return apiRequest<Category>(`/categories/${id}`, "GET");
+        }
+    },
+    promotion: {
+        /**
+         * Get active promotions available for public use
+         * These are promotions that are currently valid and can be used by customers
+         */
+        async getActivePromotions(
+            page: number = 1,
+            pageSize: number = 10,
+            name?: string
+        ): Promise<PaginatedResponse<GuestPromotionResponse>> {
+            return apiRequest<PaginatedResponse<GuestPromotionResponse>>(`/promotions/all`, "GET", { 
+                query: { page, pageSize, ...(name && { name }) } 
+            });
+        },
+
+        /**
+         * Get a specific promotion by ID (public access)
+         * Useful for displaying promotion details when user clicks on a promotion
+         */
+        async getPromotionById(id: string): Promise<GuestPromotionResponse> {
+            return apiRequest<GuestPromotionResponse>(`/promotions/${id}`, "GET");
+        },
+
+        /**
+         * Validate a promotion code
+         * Check if a promotion code is valid and can be applied to an order
+         */
+        async validatePromotionCode(
+            code: string,
+            orderTotal?: number
+        ): Promise<{
+            valid: boolean;
+            promotion?: GuestPromotionResponse;
+            discountAmount?: number;
+            error?: string;
+        }> {
+            return apiRequest<{
+                valid: boolean;
+                promotion?: GuestPromotionResponse;
+                discountAmount?: number;
+                error?: string;
+            }>(`/promotions/validate`, "POST", { 
+                data: { code, orderTotal } 
+            });
         }
     }
 };
