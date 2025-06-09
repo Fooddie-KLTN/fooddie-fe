@@ -70,7 +70,7 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({ restaurants, getFoods }
     };
 
     return (
-        <div className="w-full min-h-[500px] bg-white rounded-xl overflow-hidden shadow-xl border border-gray-100 flex flex-col md:flex-row">
+        <div className="w-full min-h-[500px] max-h-[700px] bg-white rounded-xl overflow-hidden shadow-xl border border-gray-100 flex flex-col md:flex-row">
             {/* Restaurant Info (Left Side) */}
             <div className="md:w-1/2 relative">
                 {/* Background Image */}
@@ -169,7 +169,7 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({ restaurants, getFoods }
             </div>
 
             {/* Foods (Right Side) */}
-            <div className="md:w-1/2 max-h-[800px] overflow-y-auto p-6">
+            <div className="md:w-1/2 max-h-[700px] overflow-y-auto p-6">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-xl font-bold text-gray-800">Menu nổi tiếng</h2>
                     <Link
@@ -204,6 +204,9 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({ restaurants, getFoods }
                                 </div>
                                 <div className="ml-4 flex-grow">
                                     <div className="flex justify-between items-center mt-3">
+                                        <p>
+                                            <span className="text-lg font-semibold text-gray-800">{food.name}</span>
+                                        </p>
                                         <p className="text-red-600 font-medium">
                                             {new Intl.NumberFormat('vi-VN').format(Number(food.price))} VND
                                         </p>

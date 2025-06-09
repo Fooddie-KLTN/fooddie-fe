@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 
 import ActionButtons from './_components/action';
 import FoodDescription from './_components/food-description';
-import FoodHeader from './_components/food-header';
 import FoodImage from './_components/food-image';
 import FoodBasicInfo from './_components/food-info';
 import PriceSection from './_components/price';
@@ -107,7 +106,7 @@ export default function FoodDetailPage() {
 
   return (
     <div className="container mx-auto px-4 py-10">
-      <FoodHeader />
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         {/* Food Image Section */}
@@ -157,6 +156,17 @@ export default function FoodDetailPage() {
       <ReviewsSection
         rating={food.rating || 0}
         foodId={foodId}
+        previewReviews={
+          food.reviews
+            ? food.reviews.map(r => ({
+                id: r.id || "",
+                userName: r.user?.name || "Ẩn danh",
+                rating: r.rating,
+                comment: r.comment,
+                date: r.createdAt ? new Date(r.createdAt).toISOString() : ""
+              }))
+            : []
+        }
       />
       <RestaurantLink
         restaurantId={food.restaurant.id}

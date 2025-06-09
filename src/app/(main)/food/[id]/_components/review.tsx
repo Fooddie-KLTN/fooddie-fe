@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Star } from "lucide-react";
-import Link from "next/link";
+import ReviewModal from "./review-modal";
+import { useState } from "react";
 
 // Star rating component
 const StarRating = ({ rating }: { rating: number }) => {
@@ -39,23 +40,7 @@ export default function ReviewsSection({
     foodId,
     previewReviews = []
 }: ReviewsSectionProps) {
-    // Generate sample reviews if none provided
-    const displayReviews = previewReviews.length > 0 ? previewReviews : [
-        {
-            id: "r1",
-            userName: "Nguyễn Văn A",
-            rating: 5,
-            comment: "Món ăn rất ngon, giao hàng nhanh và đóng gói cẩn thận.",
-            date: "2025-03-28"
-        },
-        {
-            id: "r2",
-            userName: "Trần Thị B",
-            rating: 4,
-            comment: "Chất lượng tốt, nhưng giao hàng hơi chậm một chút.",
-            date: "2025-03-25"
-        }
-    ];
+    const [open, setOpen] = useState(false);
 
     return (
         <div className="py-6 border-t">
@@ -70,7 +55,7 @@ export default function ReviewsSection({
             </div>
 
             <div className="space-y-4 mb-4">
-                {displayReviews.map(review => (
+                {previewReviews.map(review => (
                     <div key={review.id} className="p-4 bg-gray-50 rounded-lg">
                         <div className="flex justify-between items-center mb-2">
                             <div className="font-medium">{review.userName}</div>
@@ -85,12 +70,10 @@ export default function ReviewsSection({
                     </div>
                 ))}
             </div>
-
-            <Link href={`/food/${foodId}/reviews`}>
-                <Button variant="outline" className="w-full">
-                    Xem tất cả đánh giá
-                </Button>
-            </Link>
+            <Button variant="outline" className="w-full" onClick={() => setOpen(true)}>
+                Xem tất cả đánh giá
+            </Button>
+            <ReviewModal open={open} onClose={() => setOpen(false)} foodId={foodId} />
         </div>
     );
 }
