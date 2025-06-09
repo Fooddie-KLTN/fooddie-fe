@@ -234,6 +234,13 @@ export const userApi = {
       if (!res.ok) throw new Error("Failed to fetch top foods");
       return await res.json();
     },
+      async getMyChartData(token: string) {
+    return await apiRequest<{ days: string[]; orderCounts: number[]; revenues: number[] }>(
+      "/restaurants/my/chart-data",
+      "GET",
+      { token }
+    );
+  },
   },
   food: {
     async getFoodsByRestaurant(restaurantId: string) {

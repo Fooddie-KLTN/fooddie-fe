@@ -694,7 +694,7 @@ export default function MyShopPage() {
                   
                   <Button 
                     type="submit" 
-                    className="w-full py-6 text-lg mt-6" 
+                    className="w-full py-6 text-lg mt-6 hover:text-primary transition-colors hover:border-primary" 
                     disabled={submitting}
                     size="lg"
                   >
