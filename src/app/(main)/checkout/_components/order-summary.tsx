@@ -97,7 +97,7 @@ export const OrderSummary = ({
                 <SelectValue placeholder="Không áp dụng" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Không áp dụng</SelectItem>
+                <SelectItem value="none">Không áp dụng</SelectItem>
                 {promotions.map(promo => (
                   <SelectItem key={promo.id} value={promo.id}>
                     {promo.code} {promo.description ? `- ${promo.description}` : ""}

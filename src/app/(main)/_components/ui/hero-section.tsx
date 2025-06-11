@@ -75,12 +75,12 @@ export default function HeroSection({ searchQuery, setSearchQuery, onSearch, sug
               <div className="absolute top-full left-0 right-0 bg-white rounded-lg shadow-xl border border-gray-200 mt-2 z-30 max-h-96 overflow-y-auto">
                 <div className="p-3 border-b border-gray-100">
                   <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                    Gợi ý cho "{searchQuery}"
+                    Gợi ý cho &quot;{searchQuery}&quot;
                   </h3>
                 </div>
                 
                 <div className="py-2">
-                  {suggestFoods.map((food, index) => (
+                  {suggestFoods.map((food) => (
                     <div
                       key={food.id}
                       className="flex items-center px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors duration-150 border-b border-gray-50 last:border-b-0"
@@ -175,7 +175,7 @@ export default function HeroSection({ searchQuery, setSearchQuery, onSearch, sug
                     onClick={onSearch}
                     className="w-full text-center text-sm text-primary hover:text-primary font-medium py-2 hover:bg-gray-50 rounded-md transition-colors"
                   >
-                    Xem tất cả kết quả cho "{searchQuery}"
+                    Xem tất cả kết quả cho &quot;{searchQuery}&quot;
                   </button>
                 </div>
               </div>

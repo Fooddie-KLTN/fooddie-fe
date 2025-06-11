@@ -11,20 +11,19 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   BellRingIcon,
-  ChartNoAxesColumnIcon,
   ChevronDownIcon,
   FileTextIcon,
-  GraduationCapIcon,
   LibraryBigIcon,
   LogOutIcon,
   MenuIcon,
-  MessageSquareMoreIcon,
   SettingsIcon,
   TicketPercentIcon,
   UserPenIcon,
   UsersIcon,
   XIcon,
   StoreIcon,
+  ChartNoAxesColumnIcon,
+  ServerIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -84,14 +83,9 @@ const tabs: Tab[] = [
     path: "/shippers",
   },
   {
-    label: "Sự kiện",
-    icon: MessageSquareMoreIcon,
-    path: "/events",
-  },
-  {
-    label: "Hệ thống",
-    icon: GraduationCapIcon,
-    path: "/rules",
+    label: "Quản lý vai trò",
+    icon: ServerIcon,
+    path: "/role",
   },
 ];
 
