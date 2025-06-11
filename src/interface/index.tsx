@@ -123,6 +123,8 @@ export interface FoodPreview {
   // Related information
   category?: Category;
   restaurant: Restaurant;
+
+  
 }
 
 export interface Review {
@@ -133,6 +135,7 @@ export interface Review {
   comment: string;
   createdAt: Date;
   updatedAt: Date;
+  image: string; // Optional image URL for the review
   user: {
     id: string;
     name: string;
@@ -144,11 +147,15 @@ export interface Review {
  */
 export interface FoodDetail extends FoodPreview {
   soldCount: number; // Number of items sold
-  
+
   // Full related objects
   category: Category;
   restaurant: Restaurant;
   reviews?: Review[]; // Optional reviews array
+
+  totalReviews?: number; // <-- Added: total number of reviews
+
+
 }
 
 /**

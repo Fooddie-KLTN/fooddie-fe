@@ -2,6 +2,7 @@ import { FoodPreview } from '@/interface';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import FoodRow from '../../../_components/ui/food-row';
+import { useParams, useRouter } from 'next/navigation';
 
 interface RestaurantMenuProps {
   foods: FoodPreview[];
@@ -9,6 +10,10 @@ interface RestaurantMenuProps {
 }
 
 export function RestaurantMenu({ foods, formatPrice }: RestaurantMenuProps) {
+  const router = useRouter();
+  const params = useParams();
+  const restaurantId = params.id as string;
+
   // Sort foods by different criteria for different rows
   const mostSoldFoods = [...foods].sort((a, b) => (b.soldCount || 0) - (a.soldCount || 0));
   const discountedFoods = foods.filter(food => food.discountPercent && food.discountPercent > 0);
@@ -70,7 +75,10 @@ export function RestaurantMenu({ foods, formatPrice }: RestaurantMenuProps) {
       </Tabs>
       
       <div className="text-center mt-10 pb-6">
-        <Button className="bg-primary hover:bg-primary/90 px-6 py-2">
+        <Button
+          className="bg-primary hover:bg-primary/90 px-6 py-2 hover:text-primary"
+          onClick={() => router.push(`/restaurant/${restaurantId}/all`)}
+        >
           Xem tất cả món ăn
         </Button>
       </div>

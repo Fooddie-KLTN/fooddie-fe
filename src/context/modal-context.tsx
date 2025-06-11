@@ -160,7 +160,6 @@ const LoginForm = () => {
   const [isLoading, setIsLoading] = useState(false); // Local loading state for the form submit
   const [isPasswordVisible, setIsPasswordVisible] = useState(false); // State for password visibility
   const passwordType = isPasswordVisible ? 'text' : 'password';
-  const Icon = isPasswordVisible ? EyeOff : Eye;
   const buttonAriaLabel = isPasswordVisible ? 'Ẩn mật khẩu' : 'Hiển thị mật khẩu';
 
   // Update local error message when authError changes
@@ -241,24 +240,24 @@ const LoginForm = () => {
             </Label>
             <div className="relative w-full">
               <Input
-                id="password-login" // Changed ID
+                id="password-login"
                 type={passwordType}
                 placeholder="Nhập mật khẩu"
-                className="placeholder:text-lg text-lg"
+                className="placeholder:text-lg text-lg pr-10" // Add pr-10 for padding right
                 required
-                value={password} // Controlled component
+                value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={combinedLoading}
               />
               <button
                 type="button"
                 onClick={togglePasswordVisibility}
-                // Định vị tuyệt đối icon bên trong div tương đối
-                className="absolute inset-y-0 right-1 flex items-center pr-3 text-gray-500 hover:text-gray-700 focus:outline-none disabled:opacity-50"
+                className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center text-gray-500 hover:text-gray-700 focus:outline-none disabled:opacity-50"
                 aria-label={buttonAriaLabel}
-                disabled={combinedLoading} // Có thể disable nút toggle cùng lúc với input
+                disabled={combinedLoading}
+                tabIndex={0}
               >
-                <Icon className="h-5 w-5" />
+                {isPasswordVisible ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
             {/* Display error message */}

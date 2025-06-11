@@ -8,6 +8,8 @@ import { PaymentSection } from './_components/payment-section';
 import { OrderNoteSection } from './_components/order-note-section';
 import { OrderSummary } from './_components/order-summary';
 import { EmptyCart } from './_components/emty-cart';
+import { useEffect, useState } from "react";
+import { GuestPromotionResponse, guestService } from "@/api/guest";
 
 export default function CheckoutPage() {
   const {
@@ -29,6 +31,15 @@ export default function CheckoutPage() {
     calculation,
     calculating
   } = useCheckout();
+
+  const [promotions, setPromotions] = useState<GuestPromotionResponse[]>([]);
+  const [selectedPromotionId, setSelectedPromotionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    guestService.promotion.getActivePromotions(1, 20).then(res => {
+      setPromotions(res.items || []);
+    });
+  }, []);
 
   // Add this wrapper function
   const handlePaymentMethodChange = (method: string) => {
@@ -82,6 +93,9 @@ export default function CheckoutPage() {
               selectedUserAddressId={selectedUserAddressId}
               onOrder={handleOrder}
               formatPrice={formatPrice}
+              promotions={promotions}
+              selectedPromotionId={selectedPromotionId}
+              onSelectPromotion={setSelectedPromotionId}
             />
           </div>
         </div>

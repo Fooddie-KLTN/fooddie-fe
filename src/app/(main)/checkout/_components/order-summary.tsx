@@ -3,6 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Button } from '@/components/ui/button';
 import { ShoppingCart, CheckIcon } from 'lucide-react';
 import Image from 'next/image';
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface OrderSummaryProps {
   displayCartItems: any[];
@@ -14,6 +21,9 @@ interface OrderSummaryProps {
   selectedUserAddressId: string | null;
   onOrder: () => void;
   formatPrice: (price: number) => string;
+  promotions?: { id: string; code: string; description?: string }[]; // Thêm dòng này
+  selectedPromotionId?: string | null; // Thêm dòng này
+  onSelectPromotion?: (promotionId: string) => void; // Thêm dòng này
 }
 
 export const OrderSummary = ({
@@ -26,6 +36,9 @@ export const OrderSummary = ({
   selectedUserAddressId,
   onOrder,
   formatPrice,
+  promotions = [],
+  selectedPromotionId,
+  onSelectPromotion,
 }: OrderSummaryProps) => {
   return (
     <Card className="shadow-lg border border-gray-100 rounded-xl sticky top-8">
@@ -72,6 +85,28 @@ export const OrderSummary = ({
           <span className="text-primary">{formatPrice(total)}</span>
         </div>
         {calculating && <div className="text-center text-sm text-gray-500 py-2">Đang tính toán...</div>}
+        {/* Promotion select */}
+        {promotions.length > 0 && (
+          <div className="flex justify-between mt-2 text-base items-center">
+            <span className="text-gray-600">Khuyến mãi:</span>
+            <Select
+              value={selectedPromotionId || ""}
+              onValueChange={val => onSelectPromotion?.(val)}
+            >
+              <SelectTrigger className="border rounded px-2 py-1 min-w-[160px]">
+                <SelectValue placeholder="Không áp dụng" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Không áp dụng</SelectItem>
+                {promotions.map(promo => (
+                  <SelectItem key={promo.id} value={promo.id}>
+                    {promo.code} {promo.description ? `- ${promo.description}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </CardContent>
       <CardFooter>
         <Button

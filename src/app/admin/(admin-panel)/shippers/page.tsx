@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import {
   EyeIcon,
   PlusIcon,
-  SortAscIcon,
-  FilterIcon,
+
   CheckIcon,
   XIcon,
   TrashIcon,
@@ -28,7 +27,6 @@ interface Shipper {
     name: string;
     email: string;
     phone: string;
-    orders?: any[];
   };
   cccd: string;
   driverLicense: string;
@@ -53,7 +51,6 @@ const ShipperAdminPage: React.FC = () => {
     pendingShippers,
     approveShipper,
     rejectShipper,
-    refresh,
   } = useShippers();
 
   const filtered = (activeShippers as Shipper[]).filter((s) =>
@@ -110,11 +107,6 @@ const ShipperAdminPage: React.FC = () => {
         return <span className={`font-medium ${colorMap[status]}`}>{status}</span>;
       },
     },
-    {
-      header: "Đơn đã giao",
-      accessor: (row) => row.user.orders?.length || 0,
-      sortable: true,
-    },
   ];
 
   return (
@@ -148,6 +140,7 @@ const ShipperAdminPage: React.FC = () => {
             additionalFilters={
               <>
                 <select
+                  title="Sắp xếp theo"
                   value={sortField ?? ''}
                   onChange={(e) => {
                     const field = e.target.value as keyof Shipper;
@@ -163,6 +156,7 @@ const ShipperAdminPage: React.FC = () => {
                 </select>
             
                 <select
+                  title="Chiều sắp xếp"
                   value={sortDirection ?? ''}
                   onChange={(e) => {
                     const dir = e.target.value as 'asc' | 'desc';
@@ -176,6 +170,7 @@ const ShipperAdminPage: React.FC = () => {
                 </select>
             
                 <select
+                  title="Trạng thái"
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="border border-gray-300 rounded px-3 py-2 text-sm"
@@ -251,7 +246,6 @@ const ShipperAdminPage: React.FC = () => {
               <p><strong>CCCD:</strong> {selectedDetail.cccd}</p>
               <p><strong>GPLX:</strong> {selectedDetail.driverLicense}</p>
               <p><strong>Trạng thái:</strong> {selectedDetail.status}</p>
-              <p><strong>Đơn đã giao:</strong> {selectedDetail.user.orders?.length || 0}</p>
             </div>
           </DialogContent>
         </Dialog>
@@ -313,7 +307,6 @@ const ShipperAdminPage: React.FC = () => {
         <p><strong>CCCD:</strong> {selectedRequestDetail.cccd}</p>
         <p><strong>GPLX:</strong> {selectedRequestDetail.driverLicense}</p>
         <p><strong>Trạng thái:</strong> {selectedRequestDetail.status}</p>
-        <p><strong>Đơn đã giao:</strong> {selectedRequestDetail.user.orders?.length || 0}</p>
         <div className="flex gap-3 pt-2">
           <button
             className="px-4 py-2 bg-green-600 text-white rounded"

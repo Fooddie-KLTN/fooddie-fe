@@ -1,5 +1,5 @@
 import { apiRequest } from "./base-api";
-import { FoodPreview, FoodDetail, Restaurant, Category, PromotionType } from "../interface";
+import { FoodPreview, FoodDetail, Restaurant, Category, PromotionType, Review } from "../interface";
 import { PaginatedResponse } from "./response.interface";
 
 // Add promotion interface for guest service
@@ -116,6 +116,18 @@ export const guestService = {
         ): Promise<PaginatedResponse<FoodPreview>> {
             return apiRequest<PaginatedResponse<FoodPreview>>(`/foods/search`, "GET", { query: { query, page, pageSize, lat, lng, radius } });
         },
+        async getFoodReviews(
+            foodId: string,
+            page: number = 1,
+            pageSize: number = 10
+        ): Promise<PaginatedResponse<Review>> {
+            return apiRequest<PaginatedResponse<Review>>(
+                `/foods/${foodId}/reviews`,
+                "GET",
+                { query: { page, pageSize } }
+            );
+        },
+            
         async searchFoodsByName(
             name: string,
             page: number = 1,

@@ -254,230 +254,202 @@ const AddPromotionForm: React.FC<AddPromotionFormProps> = ({ onClose }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-xl mx-auto p-6 grid gap-4">
-      <h2 className="text-2xl font-bold text-gray-800">
+    <form onSubmit={handleSubmit} className="max-w-6xl mx-auto p-6">
+      <h2 className="text-2xl font-bold text-gray-800 mb-6">
         Thêm mã giảm giá mới
       </h2>
 
-      <div className="grid gap-1">
-        <Label htmlFor="code" className="text-base">
-          Mã code *
-        </Label>
-        <Input
-          id="code"
-          name="code"
-          type="text"
-          value={formData.code}
-          onChange={handleChange}
-          placeholder="Nhập mã khuyến mãi (VD: SALE50)"
-          required
-          disabled={isLoading}
-        />
-      </div>
+      {error && <p className="text-sm text-red-500 text-center mb-4">{error}</p>}
 
-      <div className="grid gap-1">
-        <Label htmlFor="description" className="text-base">
-          Mô tả *
-        </Label>
-        <Input
-          id="description"
-          name="description"
-          type="text"
-          value={formData.description}
-          onChange={handleChange}
-          placeholder="Mô tả khuyến mãi"
-          required
-          disabled={isLoading}
-        />
-      </div>
-
-      <div className="grid gap-1">
-        <Label htmlFor="type" className="text-base">
-          Loại khuyến mãi *
-        </Label>
-        <Select
-          value={formData.type}
-          onValueChange={handleSelectChange}
-          disabled={isLoading}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Chọn loại khuyến mãi" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={PromotionType.FOOD_DISCOUNT}>
-              Giảm giá món ăn
-            </SelectItem>
-            <SelectItem value={PromotionType.SHIPPING_DISCOUNT}>
-              Giảm phí vận chuyển
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Conditional fields based on promotion type */}
-      {formData.type === PromotionType.FOOD_DISCOUNT && (
-        <>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Left column: Main info */}
+        <div className="flex flex-col gap-4">
           <div className="grid gap-1">
-            <Label htmlFor="discountPercent" className="text-base">
-              Giảm giá (%)
-            </Label>
+            <Label htmlFor="code" className="text-base">Mã code *</Label>
             <Input
-              id="discountPercent"
-              name="discountPercent"
-              type="number"
-              min={1}
-              max={100}
-              value={formData.discountPercent || ""}
+              id="code"
+              name="code"
+              type="text"
+              value={formData.code}
               onChange={handleChange}
-              placeholder="Nhập phần trăm giảm"
+              placeholder="Nhập mã khuyến mãi (VD: SALE50)"
+              required
               disabled={isLoading}
             />
           </div>
-
           <div className="grid gap-1">
-            <Label htmlFor="discountAmount" className="text-base">
-              Hoặc giảm giá cố định (VND)
-            </Label>
+            <Label htmlFor="description" className="text-base">Mô tả *</Label>
             <Input
-              id="discountAmount"
-              name="discountAmount"
-              type="number"
-              min={1}
-              value={formData.discountAmount || ""}
+              id="description"
+              name="description"
+              type="text"
+              value={formData.description}
               onChange={handleChange}
-              placeholder="Nhập số tiền giảm cố định"
+              placeholder="Mô tả khuyến mãi"
+              required
               disabled={isLoading}
             />
           </div>
-        </>
-      )}
-
-      {formData.type === PromotionType.SHIPPING_DISCOUNT && (
-        <div className="grid gap-1">
-          <Label htmlFor="discountAmount" className="text-base">
-            Giảm phí vận chuyển (VND)
-          </Label>
-          <Input
-            id="discountAmount"
-            name="discountAmount"
-            type="number"
-            min={1}
-            value={formData.discountAmount || ""}
-            onChange={handleChange}
-            placeholder="Nhập số tiền giảm phí ship (để trống = miễn phí hoàn toàn)"
-            disabled={isLoading}
-          />
-        </div>
-      )}
-
-      <div className="grid gap-1">
-        <Label htmlFor="minOrderValue" className="text-base">
-          Giá trị đơn hàng tối thiểu
-        </Label>
-        <Input
-          id="minOrderValue"
-          name="minOrderValue"
-          type="number"
-          min={0}
-          value={formData.minOrderValue || ""}
-          onChange={handleChange}
-          placeholder="Để trống nếu không yêu cầu"
-          disabled={isLoading}
-        />
-      </div>
-
-      <div className="grid gap-1">
-        <Label htmlFor="maxDiscountAmount" className="text-base">
-          Giảm giá tối đa
-        </Label>
-        <Input
-          id="maxDiscountAmount"
-          name="maxDiscountAmount"
-          type="number"
-          min={0}
-          value={formData.maxDiscountAmount || ""}
-          onChange={handleChange}
-          placeholder="Để trống nếu không giới hạn"
-          disabled={isLoading}
-        />
-      </div>
-
-      <div className="grid gap-1">
-        <Label htmlFor="maxUsage" className="text-base">
-          Số lần sử dụng tối đa
-        </Label>
-        <Input
-          id="maxUsage"
-          name="maxUsage"
-          type="number"
-          min={1}
-          value={formData.maxUsage || ""}
-          onChange={handleChange}
-          placeholder="Để trống nếu không giới hạn"
-          disabled={isLoading}
-        />
-      </div>
-
-      <div className="grid gap-1">
-        <Label className="text-base">Thời gian áp dụng</Label>
-        <DateRangePicker
-          value={dateRange}
-          onChange={setDateRange}
-          placeholder="Chọn khoảng thời gian áp dụng"
-          minDate={new Date()}
-          disabled={isLoading}
-        />
-        <p className="text-xs text-gray-500">
-          Để trống nếu mã không có thời hạn
-        </p>
-      </div>
-
-      <div className="grid gap-1">
-        <Label htmlFor="promotionImage" className="text-base">
-          Ảnh khuyến mãi
-        </Label>
-        <div className="flex flex-col items-center">
-          {imagePreview ? (
-            <img
-              src={imagePreview}
-              alt="Preview"
-              className="mt-2 w-32 h-32 object-cover rounded border"
-            />
-          ) : (
-            <UploadCloudIcon className="mt-2 w-12 h-12 text-gray-400" />
-          )}
-          <Input
-            id="promotionImage"
-            name="promotionImage"
-            type="file"
-            accept="image/png, image/jpeg, image/gif, image/webp"
-            onChange={handleImageChange}
-            disabled={isLoading}
-            className="mt-2"
-          />
-          {!imageFile && (
-            <p className="text-xs text-gray-500 mt-1">
-              PNG, JPG, GIF, WEBP tối đa 2MB
-            </p>
-          )}
-          {imageFile && (
-            <Button
-              variant="link"
-              size="sm"
-              className="text-xs text-red-500 hover:text-red-700 mt-1"
-              type="button"
-              onClick={handleRemoveImage}
+          <div className="grid gap-1">
+            <Label htmlFor="type" className="text-base">Loại khuyến mãi *</Label>
+            <Select
+              value={formData.type}
+              onValueChange={handleSelectChange}
               disabled={isLoading}
             >
-              Xóa ảnh
-            </Button>
+              <SelectTrigger>
+                <SelectValue placeholder="Chọn loại khuyến mãi" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={PromotionType.FOOD_DISCOUNT}>Giảm giá món ăn</SelectItem>
+                <SelectItem value={PromotionType.SHIPPING_DISCOUNT}>Giảm phí vận chuyển</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {/* Conditional fields based on promotion type */}
+          {formData.type === PromotionType.FOOD_DISCOUNT && (
+            <>
+              <div className="grid gap-1">
+                <Label htmlFor="discountPercent" className="text-base">Giảm giá (%)</Label>
+                <Input
+                  id="discountPercent"
+                  name="discountPercent"
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={formData.discountPercent || ""}
+                  onChange={handleChange}
+                  placeholder="Nhập phần trăm giảm"
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label htmlFor="discountAmount" className="text-base">Hoặc giảm giá cố định (VND)</Label>
+                <Input
+                  id="discountAmount"
+                  name="discountAmount"
+                  type="number"
+                  min={1}
+                  value={formData.discountAmount || ""}
+                  onChange={handleChange}
+                  placeholder="Nhập số tiền giảm cố định"
+                  disabled={isLoading}
+                />
+              </div>
+            </>
           )}
+          {formData.type === PromotionType.SHIPPING_DISCOUNT && (
+            <div className="grid gap-1">
+              <Label htmlFor="discountAmount" className="text-base">Giảm phí vận chuyển (VND)</Label>
+              <Input
+                id="discountAmount"
+                name="discountAmount"
+                type="number"
+                min={1}
+                value={formData.discountAmount || ""}
+                onChange={handleChange}
+                placeholder="Nhập số tiền giảm phí ship (để trống = miễn phí hoàn toàn)"
+                disabled={isLoading}
+              />
+            </div>
+          )}
+          <div className="grid gap-1">
+            <Label htmlFor="minOrderValue" className="text-base">Giá trị đơn hàng tối thiểu</Label>
+            <Input
+              id="minOrderValue"
+              name="minOrderValue"
+              type="number"
+              min={0}
+              value={formData.minOrderValue || ""}
+              onChange={handleChange}
+              placeholder="Để trống nếu không yêu cầu"
+              disabled={isLoading}
+            />
+          </div>
+          <div className="grid gap-1">
+            <Label htmlFor="maxDiscountAmount" className="text-base">Giảm giá tối đa</Label>
+            <Input
+              id="maxDiscountAmount"
+              name="maxDiscountAmount"
+              type="number"
+              min={0}
+              value={formData.maxDiscountAmount || ""}
+              onChange={handleChange}
+              placeholder="Để trống nếu không giới hạn"
+              disabled={isLoading}
+            />
+          </div>
+          <div className="grid gap-1">
+            <Label htmlFor="maxUsage" className="text-base">Số lần sử dụng tối đa</Label>
+            <Input
+              id="maxUsage"
+              name="maxUsage"
+              type="number"
+              min={1}
+              value={formData.maxUsage || ""}
+              onChange={handleChange}
+              placeholder="Để trống nếu không giới hạn"
+              disabled={isLoading}
+            />
+          </div>
+        </div>
+        {/* Right column: Date range & image */}
+        <div className="flex flex-col gap-4">
+          <div className="grid gap-1">
+            <Label className="text-base">Thời gian áp dụng</Label>
+            <DateRangePicker
+              value={dateRange}
+              onChange={setDateRange}
+              placeholder="Chọn khoảng thời gian áp dụng"
+              minDate={new Date()}
+              disabled={isLoading}
+            />
+            <p className="text-xs text-gray-500">Để trống nếu mã không có thời hạn</p>
+          </div>
+          <div className="grid gap-1">
+            <Label htmlFor="promotionImage" className="text-base">Ảnh khuyến mãi</Label>
+            <div className="flex flex-col items-center">
+              {imagePreview ? (
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="mt-2 w-32 h-32 object-cover rounded border"
+                />
+              ) : (
+                <UploadCloudIcon className="mt-2 w-12 h-12 text-gray-400" />
+              )}
+              <Input
+                id="promotionImage"
+                name="promotionImage"
+                type="file"
+                accept="image/png, image/jpeg, image/gif, image/webp"
+                onChange={handleImageChange}
+                disabled={isLoading}
+                className="mt-2"
+              />
+              {!imageFile && (
+                <p className="text-xs text-gray-500 mt-1">
+                  PNG, JPG, GIF, WEBP tối đa 2MB
+                </p>
+              )}
+              {imageFile && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="text-xs text-red-500 hover:text-red-700 mt-1"
+                  type="button"
+                  onClick={handleRemoveImage}
+                  disabled={isLoading}
+                >
+                  Xóa ảnh
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-
-      <div className="flex justify-end gap-2 mt-4">
+      <div className="flex justify-end gap-2 mt-8">
         <Button
           type="button"
           variant="outline"

@@ -22,12 +22,12 @@ const priceRanges = [
 
 const radiusOptions = [
   { label: "1 km", value: 1 },
-  { label: "3 km", value: 3 },
   { label: "5 km", value: 5 },
   { label: "10 km", value: 10 },
     { label: "20 km", value: 20 },
     { label: "50 km", value: 50 },
     { label: "100 km", value: 100 },
+    { label: "Tất cả", value: 999999 }, // Use a large number for "All"
 ];
 
 export default function FoodSearchPage() {

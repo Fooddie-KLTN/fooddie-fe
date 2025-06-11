@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Home, UtensilsCrossed, BarChart3, ShoppingBag, Tag, LogOut, ChefHat } from 'lucide-react'; // Đã thêm ChefHat cho logo
+import { Home, UtensilsCrossed, BarChart3, ShoppingBag,  LogOut, ChefHat } from 'lucide-react'; // Đã thêm ChefHat cho logo
 
 // Định nghĩa các mục điều hướng
 const navItems = [
@@ -12,7 +12,6 @@ const navItems = [
     { href: 'basic-info', label: 'Thông tin cơ bản', icon: Home },
     { href: 'food-list', label: 'Thực đơn', icon: UtensilsCrossed }, // Đổi tên cho rõ ràng
     { href: 'order-list', label: 'Đơn hàng', icon: ShoppingBag },
-    { href: 'promotions', label: 'Khuyến mãi', icon: Tag },
 ];
 
 export function Sidebar() {
