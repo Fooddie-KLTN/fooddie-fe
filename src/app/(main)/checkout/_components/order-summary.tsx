@@ -21,9 +21,9 @@ interface OrderSummaryProps {
   selectedUserAddressId: string | null;
   onOrder: () => void;
   formatPrice: (price: number) => string;
-  promotions?: { id: string; code: string; description?: string }[]; // Thêm dòng này
-  selectedPromotionId?: string | null; // Thêm dòng này
-  onSelectPromotion?: (promotionId: string) => void; // Thêm dòng này
+  promotions?: { id: string; code: string; description?: string }[];
+  selectedPromotionCode?: string | null;
+  onSelectPromotion?: (promotionCode: string) => void;
 }
 
 export const OrderSummary = ({
@@ -37,7 +37,7 @@ export const OrderSummary = ({
   onOrder,
   formatPrice,
   promotions = [],
-  selectedPromotionId,
+  selectedPromotionCode,
   onSelectPromotion,
 }: OrderSummaryProps) => {
   return (
@@ -90,7 +90,7 @@ export const OrderSummary = ({
           <div className="flex justify-between mt-2 text-base items-center">
             <span className="text-gray-600">Khuyến mãi:</span>
             <Select
-              value={selectedPromotionId || ""}
+              value={selectedPromotionCode || ""}
               onValueChange={val => onSelectPromotion?.(val)}
             >
               <SelectTrigger className="border rounded px-2 py-1 min-w-[160px]">
@@ -99,7 +99,7 @@ export const OrderSummary = ({
               <SelectContent>
                 <SelectItem value="none">Không áp dụng</SelectItem>
                 {promotions.map(promo => (
-                  <SelectItem key={promo.id} value={promo.id}>
+                  <SelectItem key={promo.id} value={promo.code}>
                     {promo.code} {promo.description ? `- ${promo.description}` : ""}
                   </SelectItem>
                 ))}

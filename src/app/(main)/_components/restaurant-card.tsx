@@ -70,7 +70,7 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({ restaurants, getFoods }
     };
 
     return (
-        <div className="w-full min-h-[500px] max-h-[700px] bg-white rounded-xl overflow-hidden shadow-xl border border-gray-100 flex flex-col md:flex-row">
+        <div className="w-full min-h-[500px] max-h-[500px] bg-white rounded-xl overflow-hidden shadow-xl border border-gray-100 flex flex-col md:flex-row">
             {/* Restaurant Info (Left Side) */}
             <div className="md:w-1/2 relative">
                 {/* Background Image */}

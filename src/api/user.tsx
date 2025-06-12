@@ -318,9 +318,9 @@ export const userApi = {
      * @param {string} items : { foodId: string, quantity: number }[] - Danh sách các món ăn trong đơn hàng
      * @return {Promise<CalculateOrderResponse>} - Kết quả tính toán tổng giá trị đơn hàng
      */
-    async calculateOrder(addressId: string, restaurantId: string, items: { foodId: string, quantity: number }[]): Promise<any> {
+    async calculateOrder(addressId: string, restaurantId: string, items: { foodId: string, quantity: number }[], promotionCode?: string): Promise<any> {
       try {
-        return await apiRequest<CalculateOrderResponse>('/orders/calculate', 'POST', { data: { addressId, restaurantId, items } });
+        return await apiRequest<CalculateOrderResponse>('/orders/calculate', 'POST', { data: { addressId, restaurantId, items, promotionCode } });
       } catch (error) {
         console.error('Order API error:', error);
         throw error;

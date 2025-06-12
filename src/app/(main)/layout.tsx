@@ -20,88 +20,132 @@ import {
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 import { usePathname } from "next/navigation";
-import { HomeIcon } from "lucide-react";
+import { HomeIcon, ChevronRightIcon } from "lucide-react";
 
-// Path mapping for breadcrumbs
-const pathMap: Record<string, { label: string; parent?: string }> = {
-  "/": { label: "Trang chủ" },
-  "/search": { label: "Tìm kiếm" },
-  "/food": { label: "Món ăn" },
+// Enhanced path mapping for breadcrumbs with more detailed routes
+const pathMap: Record<string, { label: string; parent?: string; icon?: React.ReactNode }> = {
+  "/": { label: "Trang chủ", icon: <HomeIcon className="w-4 h-4" /> },
+  "/search": { label: "Tìm kiếm món ăn", parent: "/" },
+  "/food": { label: "Món ăn", parent: "/" },
   "/food/[id]": { label: "Chi tiết món ăn", parent: "/food" },
-  "/restaurant": { label: "Nhà hàng" },
+  "/restaurant": { label: "Nhà hàng", parent: "/" },
   "/restaurant/[id]": { label: "Chi tiết nhà hàng", parent: "/restaurant" },
   "/restaurant/[id]/all": { label: "Tất cả món ăn", parent: "/restaurant/[id]" },
-  "/order": { label: "Đơn hàng" },
+  "/restaurant/[id]/menu": { label: "Thực đơn", parent: "/restaurant/[id]" },
+  "/order": { label: "Đơn hàng", parent: "/" },
   "/order/[id]": { label: "Chi tiết đơn hàng", parent: "/order" },
-  "/checkout": { label: "Thanh toán" },
-  "/profile": { label: "Hồ sơ" },
-  "/about": { label: "Giới thiệu" },
+  "/order/history": { label: "Lịch sử đơn hàng", parent: "/order" },
+  "/checkout": { label: "Thanh toán", parent: "/" },
+  "/cart": { label: "Giỏ hàng", parent: "/" },
+  "/profile": { label: "Hồ sơ cá nhân", parent: "/" },
+  "/profile/edit": { label: "Chỉnh sửa hồ sơ", parent: "/profile" },
+  "/profile/orders": { label: "Đơn hàng của tôi", parent: "/profile" },
+  "/about": { label: "Giới thiệu", parent: "/" },
+  "/contact": { label: "Liên hệ", parent: "/" },
+  "/help": { label: "Trợ giúp", parent: "/" },
+  "/terms": { label: "Điều khoản sử dụng", parent: "/" },
+  "/privacy": { label: "Chính sách bảo mật", parent: "/" },
 };
 
-// Utility to match dynamic routes
+// Enhanced utility to match dynamic routes
 const getBreadcrumbTrail = (pathname: string) => {
   // Skip breadcrumb for home page
   if (pathname === "/") return [];
   
   const segments = pathname.split("/").filter(Boolean);
-  let path = "";
-  let matchedKey = "";
-  let trail: { href: string; label: string }[] = [];
-
-  // Try to match the path to a key in pathMap, replacing dynamic segments with [id]
+  const trail: { href: string; label: string; isActive: boolean }[] = [];
+  
+  // Build path progressively
+  let currentPath = "";
   for (let i = 0; i < segments.length; i++) {
-    path += "/" + segments[i];
-    let testPath = path;
-    // Try to match dynamic segments
-    if (!pathMap[testPath]) {
-      // Replace UUIDs or any ID with [id]
-      testPath = testPath.replace(/\/[^\/]+$/, "/[id]");
+    currentPath += "/" + segments[i];
+    let matchedPath = currentPath;
+    
+    // Try to match exact path first
+    if (!pathMap[matchedPath]) {
+      // Try to match with dynamic segment
+      const pathParts = currentPath.split("/");
+      const dynamicPath = pathParts.slice(0, -1).join("/") + "/[id]";
+      if (pathMap[dynamicPath]) {
+        matchedPath = dynamicPath;
+      }
     }
-    if (pathMap[testPath]) {
-      matchedKey = testPath;
+    
+    if (pathMap[matchedPath]) {
       trail.push({
-        href: path,
-        label: pathMap[testPath].label,
+        href: currentPath,
+        label: pathMap[matchedPath].label,
+        isActive: i === segments.length - 1,
       });
     }
   }
-
-  // Walk up the parent chain if needed
-  let parent = pathMap[matchedKey]?.parent;
-  while (parent) {
-    // Find the actual href for the parent
-    let parentHref = parent;
-    // If parent is dynamic, reconstruct href from segments
-    if (parent.includes("[id]")) {
-      const segs = pathname.split("/");
-      const parentSegs = parent.split("/");
-      const idx = parentSegs.findIndex((s) => s === "[id]");
-      if (idx > -1 && segs[idx]) {
-        parentHref = parent.replace("[id]", segs[idx]);
-      }
-    }
-    trail.unshift({
-      href: parentHref,
-      label: pathMap[parent].label,
-    });
-    parent = pathMap[parent]?.parent;
-  }
-
-  // Always add home
-  trail.unshift({
+  
+  // Build complete trail with parents
+  const completeTrail: { href: string; label: string; isActive: boolean; icon?: React.ReactNode }[] = [];
+  const processedPaths = new Set<string>();
+  
+  // Add home first
+  completeTrail.push({
     href: "/",
     label: pathMap["/"].label,
+    isActive: false,
+    icon: pathMap["/"].icon,
   });
-
-  // Remove duplicates
-  const seen = new Set();
-  trail = trail.filter((item) => {
-    if (seen.has(item.href)) return false;
-    seen.add(item.href);
-    return true;
-  });
-
-  return trail;
+  processedPaths.add("/");
+  
+  // Process each item in trail
+  for (const item of trail) {
+    // Find the matching template path
+    let templatePath = "";
+    for (const [key] of Object.entries(pathMap)) {
+      if (key === item.href || (key.includes("[id]") && item.href.match(key.replace("[id]", "[^/]+")))) {
+        templatePath = key;
+        break;
+      }
+    }
+    
+    // Add parent paths if not already added
+    const addParentPaths = (path: string) => {
+      const config = pathMap[path];
+      if (config?.parent && !processedPaths.has(config.parent)) {
+        addParentPaths(config.parent);
+        
+        // Reconstruct parent href
+        let parentHref = config.parent;
+        if (config.parent.includes("[id]")) {
+          const currentSegments = item.href.split("/");
+          const parentSegments = config.parent.split("/");
+          const idIndex = parentSegments.findIndex(seg => seg === "[id]");
+          if (idIndex !== -1 && currentSegments[idIndex]) {
+            parentHref = config.parent.replace("[id]", currentSegments[idIndex]);
+          }
+        }
+        
+        completeTrail.push({
+          href: parentHref,
+          label: pathMap[config.parent].label,
+          isActive: false,
+          icon: pathMap[config.parent].icon,
+        });
+        processedPaths.add(config.parent);
+      }
+    };
+    
+    if (templatePath) {
+      addParentPaths(templatePath);
+    }
+    
+    // Add current item if not already added
+    if (!processedPaths.has(item.href)) {
+      completeTrail.push({
+        ...item,
+        icon: pathMap[templatePath]?.icon,
+      });
+      processedPaths.add(item.href);
+    }
+  }
+  
+  return completeTrail;
 };
 
 export default function RootLayout({
@@ -119,35 +163,50 @@ export default function RootLayout({
           <CartProvider>
             <GeoLocationProvider>
               <Navbar />
-              {/* Only show breadcrumb if not on home page */}
+              {/* Enhanced breadcrumb with better styling */}
               {breadcrumbs.length > 0 && (
-                <div className="container mx-auto px-4 py-2 bg-gray-50">
-                  <Breadcrumb>
-                    <BreadcrumbList>
-                      {breadcrumbs.map((crumb, idx) => (
-                        <React.Fragment key={crumb.href}>
-                          <BreadcrumbItem>
-                            {idx === 0 ? (
-                              <BreadcrumbLink href={crumb.href} aria-label="Trang chủ">
-                                <HomeIcon className="w-4 h-4 inline mr-1" />
-                                {crumb.label}
-                              </BreadcrumbLink>
-                            ) : idx === breadcrumbs.length - 1 ? (
-                              <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
-                            ) : (
-                              <BreadcrumbLink href={crumb.href}>
-                                {crumb.label}
-                              </BreadcrumbLink>
+                <div className="border-b bg-gray-50/50 backdrop-blur-sm sticky top-24 z-40">
+                  <div className="container mx-auto px-4 py-3">
+                    <Breadcrumb>
+                      <BreadcrumbList className="flex-wrap">
+                        {breadcrumbs.map((crumb, idx) => (
+                          <React.Fragment key={`${crumb.href}-${idx}`}>
+                            <BreadcrumbItem className="flex items-center">
+                              {crumb.isActive ? (
+                                <BreadcrumbPage className="flex items-center gap-1.5 font-medium text-primary">
+                                  {crumb.icon}
+                                  <span className="max-w-[200px] truncate" title={crumb.label}>
+                                    {crumb.label}
+                                  </span>
+                                </BreadcrumbPage>
+                              ) : (
+                                <BreadcrumbLink 
+                                  href={crumb.href}
+                                  className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors duration-200"
+                                  title={crumb.label}
+                                >
+                                  {crumb.icon}
+                                  <span className="max-w-[150px] truncate">
+                                    {crumb.label}
+                                  </span>
+                                </BreadcrumbLink>
+                              )}
+                            </BreadcrumbItem>
+                            {idx < breadcrumbs.length - 1 && (
+                              <BreadcrumbSeparator className="text-muted-foreground/60">
+                                <ChevronRightIcon className="w-4 h-4" />
+                              </BreadcrumbSeparator>
                             )}
-                          </BreadcrumbItem>
-                          {idx < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
-                        </React.Fragment>
-                      ))}
-                    </BreadcrumbList>
-                  </Breadcrumb>
+                          </React.Fragment>
+                        ))}
+                      </BreadcrumbList>
+                    </Breadcrumb>
+                  </div>
                 </div>
               )}
-              {children}
+              <main className="min-h-screen">
+                {children}
+              </main>
               <ChatWidget />
             </GeoLocationProvider>
           </CartProvider>
