@@ -1,6 +1,5 @@
 'use client';
 
-
 import { useCheckout } from './_hook/checkout';
 import { CartItemsSection } from './_components/cart-item-section';
 import { AddressSection } from './_components/address-section';
@@ -29,11 +28,13 @@ export default function CheckoutPage() {
     handleOrder,
     formatPrice,
     calculation,
-    calculating
+    calculating,
+    promotionCode,
+    setPromotionCode,
   } = useCheckout();
 
   const [promotions, setPromotions] = useState<GuestPromotionResponse[]>([]);
-  const [selectedPromotionId, setSelectedPromotionId] = useState<string | null>(null);
+
 
   useEffect(() => {
     guestService.promotion.getActivePromotions(1, 20).then(res => {
@@ -72,7 +73,7 @@ export default function CheckoutPage() {
             <PaymentSection
               paymentMethod={paymentMethod}
               showOnlineDropdown={showOnlineDropdown}
-              onPaymentMethodChange={handlePaymentMethodChange} // use the wrapper
+              onPaymentMethodChange={handlePaymentMethodChange}
               onToggleDropdown={() => setShowOnlineDropdown((prev) => !prev)}
             />
             <OrderNoteSection
@@ -82,7 +83,6 @@ export default function CheckoutPage() {
           </div>
           {/* RIGHT: Order Summary */}
           <div className="md:w-[380px] w-full">
-
             <OrderSummary
               displayCartItems={displayCartItems}
               totalPrice={calculation?.foodTotal ?? 0}
@@ -94,8 +94,8 @@ export default function CheckoutPage() {
               onOrder={handleOrder}
               formatPrice={formatPrice}
               promotions={promotions}
-              selectedPromotionId={selectedPromotionId}
-              onSelectPromotion={setSelectedPromotionId}
+              selectedPromotionCode={promotionCode}
+              onSelectPromotion={setPromotionCode}
             />
           </div>
         </div>

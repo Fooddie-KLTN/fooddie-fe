@@ -25,6 +25,7 @@ export const useCheckout = () => {
     const [calculation, setCalculation] = useState<CalculateOrderResponse | null>(null);
     const [calculating, setCalculating] = useState(false);
 
+    const [promotionCode, setPromotionCode] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchCart = async () => {
@@ -81,7 +82,8 @@ export const useCheckout = () => {
                 const result = await userApi.order.calculateOrder(
                     selectedUserAddressId,
                     displayCartItems[0].restaurant.id,
-                    items
+                    items,
+                    promotionCode || undefined
                 );
                 setCalculation(result);
             } catch (e) {
@@ -93,7 +95,7 @@ export const useCheckout = () => {
             setCalculating(false);
         };
         calc();
-    }, [displayCartItems, selectedUserAddressId]);
+    }, [displayCartItems, selectedUserAddressId, promotionCode]); // Add promotionCode here
 
     const handleSetDefaultAddress = (addressId: string) => {
         setUserAddresses(prev =>
@@ -173,5 +175,7 @@ export const useCheckout = () => {
         formatPrice,
         calculation,
         calculating,
+        promotionCode,
+        setPromotionCode,
     };
 };
