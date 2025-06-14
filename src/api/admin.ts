@@ -1,5 +1,5 @@
 // adminApi.ts
-import { UserProfile } from "@/interface";
+import { Address,  Promotion, Review, UserProfile } from "@/interface";
 import { apiRequest } from "./base-api";
 import * as response from "./response.interface";
 
@@ -93,24 +93,94 @@ interface StoreResponse {
     id: string;
     status: string;
     createdAt: string;
+    updatedAt: string;
     total: string;
     note: string;
-    address: {
-      location: string;
-      fullName: string;
+    date: string;
+    paymentMethod: string;
+    paymentDate: string | null;
+    isPaid: boolean;
+    user: {
+      id: string;
+      username: string;
+      email: string;
+      name: string;
+      phone: string;
+      avatar: string;
+      isActive: boolean;
+      authProvider: string;
+      role: {
+        id: string;
+        name: string;
+        displayName: string;
+      };
+      address: {
+        id: string;
+        street: string;
+        ward: string;
+        district: string;
+        city: string;
+        isDefault: boolean;
+        label: string | null;
+        latitude?: number;
+        longitude?: number;
+      }[];
     };
     restaurant: {
+      id: string;
       name: string;
-      location: string;
+      phoneNumber: string;
+      backgroundImage: string;
+      avatar: string;
+      description: string;
+      rating: string;
+      status: string;
+      latitude: string;
+      longitude: string;
+      address: {
+        id: string;
+        street: string;
+        ward: string;
+        district: string;
+        city: string;
+        latitude: number;
+        longitude: number;
+        isDefault: boolean;
+        label: string | null;
+      };
     };
     orderDetails: {
-      food: {
-        name: string;
-      };
-      quantity: string;
+      id: string;
+      varity: string | null;
+      quantity: number;
       price: string;
-      note: string;
+      note: string | null;
+      food: {
+        id: string;
+        description: string;
+        image: string;
+        imageUrls: string[] | null;
+        name: string;
+        price: string;
+        discountPercent: string;
+        rating: string;
+        status: string;
+        tag: string | null;
+        createdAt: string;
+        updatedAt: string;
+        preparationTime: number | null;
+      };
     }[];
+    promotionCode: Promotion | null; // You might want to define this interface properly
+    address: Address | null; // You might want to define this interface properly
+    reviewInfo: {
+      hasReviewedFood: boolean;
+      hasReviewedShipper: boolean;
+      foodReviews: Review[]; // Array of food reviews
+      shipperReview: Review | null; // Shipper review object or null
+      canReviewFood: boolean;
+      canReviewShipper: boolean;
+    };
   }
   
 
@@ -196,7 +266,64 @@ export const adminService = {
             throw error;
         }
     },
+		/**
+		 * Upload a cover image for a blog using GCS signed URL
+		 * 
+		 * @param {string} token - Admin authentication token
+		 * @param {File} imageFile - Image file to upload
+		 * @returns {Promise<{ imageUrl: string }>} - URL of the uploaded image
+		 */
+		async uploadCoverImage(token: string, imageFile: File): Promise<{ imageUrl: string }> {
+			try {
+				// 1. Request signed URL from /api/gcs-upload
+				const gcsRes = await fetch('/api/gcs-upload', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						...(token ? { 'Authorization': `Bearer ${token}` } : {})
+					},
+					body: JSON.stringify({
+						fileName: imageFile.name,
+						fileType: imageFile.type,
+						folder: 'blog-covers',
+						isPublic: true
+					})
+				});
 
+				if (!gcsRes.ok) {
+					const errorData = await gcsRes.json().catch(() => ({}));
+					throw new Error(errorData.error || 'Failed to get signed upload URL');
+				}
+
+				const { url, publicUrl } = await gcsRes.json();
+
+				// 2. Upload file to GCS using signed URL
+				// Only set Content-Type, no other headers
+				const uploadHeaders: Record<string, string> = {
+					'Content-Type': imageFile.type
+				};
+				// If the signed URL includes x-goog-acl in its signed headers, add it
+				if (url.includes('x-goog-acl')) {
+					uploadHeaders['x-goog-acl'] = 'public-read';
+				}
+
+				const uploadRes = await fetch(url, {
+					method: 'PUT',
+					headers: uploadHeaders,
+					body: imageFile
+				});
+
+				if (!uploadRes.ok) {
+					throw new Error('Failed to upload image to storage');
+				}
+
+				// 3. Return the public URL
+				return { imageUrl: publicUrl };
+			} catch (error) {
+				console.error('Error uploading blog cover image:', error);
+				throw error;
+			}
+		},
     /**
      * Các phương thức quản lý người dùng
      * 
@@ -335,7 +462,9 @@ export const adminService = {
     
         async getOrderById(token: string, id: string): Promise<OrderResponse> {
           try {
-            return await apiRequest<OrderResponse>(`/orders/${id}`, 'GET', { token });
+            return await apiRequest<OrderResponse>(`/orders/${id}`, 'GET', { token, query: { review: true } 
+              
+             });
           } catch (error) {
             console.error('Lỗi khi lấy chi tiết đơn hàng:', error);
             throw error;
