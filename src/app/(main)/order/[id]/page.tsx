@@ -67,12 +67,6 @@ const STATUS_CONFIG = {
     icon: <XCircle className="w-4 h-4" />,
     bgColor: "bg-red-500"
   },
-  processing_payment: {
-    label: "Đang xử lý thanh toán",
-    color: "bg-purple-50 text-purple-700 border-purple-200",
-    icon: <CreditCard className="w-4 h-4" />,
-    bgColor: "bg-purple-500"
-  }
 };
 
 const formatPrice = (price: string | number) => {
