@@ -263,6 +263,22 @@ export const authService = {
       }
   },
 
+  /**
+   * Resets the user's password using a reset token.
+   * @param {string} token - The reset token sent to the user's email.
+   * @param {string} email - The user's email address.
+   * @param {string} newPassword - The new password to set.
+   * @return {Promise<any>} The response from the backend.
+   * @throws {Error} If the reset fails.
+   */
+  async resetPassword(token: string, email: string, newPassword: string): Promise<any> {
+      try {
+          return await apiRequest<any>('/auth/reset-password', 'POST', { data: { token, email, newPassword } });
+      } catch (error) {
+          console.error('Reset password API error:', error);
+          throw error; // Re-throw for handling in the component
+      }
+    },
 
   // Expose utility functions for direct use if needed (e.g., in context initialization)
   utils: {
