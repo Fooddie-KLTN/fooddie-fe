@@ -88,7 +88,7 @@ export async function apiRequest<T>(
      * Các tham số truy vấn sẽ được thêm vào URL.
      * Ví dụ: { page: 1, size: 10 } → '?page=1&size=10'
      */
-    query?: Record<string, string | number>;
+    query?: Record<string, string | number | boolean >;
 
     /**
      * Dữ liệu FormData sẽ được gửi trong phần thân của yêu cầu.
