@@ -1022,12 +1022,13 @@ food: {
 	async getFoods(token: string, page: number = 1, limit: number = 10,
 		search: string = '',
 		restaurantId : string = 'all',
-		categoryId : string = 'all'
+		categoryId : string = 'all',
+		status: string = 'all'
 	 ): Promise<response.PaginatedResponse<FoodDetail>> {
 		try {
 			return await apiRequest<response.PaginatedResponse<FoodDetail>>('/foods/all', 'GET', {
 				token,
-				query: { page, limit, search, restaurantId, categoryId }
+				query: { page, limit, search, restaurantId, categoryId, status }
 			});
 		} catch (error) {
 			console.error('Lỗi API lấy danh sách món ăn:', error);

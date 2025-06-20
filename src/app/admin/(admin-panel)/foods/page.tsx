@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Category, FoodPreview, Restaurant } from '@/interface';
 import Image from 'next/image';
 import { 
-  Search, Filter, Eye, Edit, Trash2, Plus, 
+  Search, Eye, Edit, Trash2, 
   Store, Star, Clock, DollarSign, AlertTriangle 
 } from 'lucide-react';
 import {
@@ -26,7 +26,7 @@ export default function AdminFoodsPage() {
   const { getToken } = useAuth();
   const [foods, setFoods] = useState<FoodPreview[]>([]);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]); // Assuming categories are strings
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRestaurant, setSelectedRestaurant] = useState<string>('all');
@@ -34,36 +34,58 @@ export default function AdminFoodsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [searchDebounce, setSearchDebounce] = useState<NodeJS.Timeout | null>(null);
 
-  // Fetch foods with filters
+  // Fetch foods with filters - using backend parameters
   useEffect(() => {
-    fetchFoods();
+    // Debounce search queries
+    if (searchDebounce) {
+      clearTimeout(searchDebounce);
+    }
+    
+    const timeout = setTimeout(() => {
+      fetchFoods();
+    }, searchQuery ? 500 : 0); // 500ms delay for search, immediate for other filters
+    
+    setSearchDebounce(timeout);
+    
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
   }, [currentPage, selectedRestaurant, selectedStatus, selectedCategory, searchQuery]);
 
   const fetchFoods = async () => {
     try {
+      // Prepare parameters for backend filtering
+      const restaurantParam = selectedRestaurant !== 'all' ? selectedRestaurant : '';
+      const categoryParam = selectedCategory !== 'all' ? selectedCategory : '';
+      const statusParam = selectedStatus !== 'all' ? selectedStatus : '';
+
       setLoading(true);
       const token = getToken();
       if (!token) return;
 
-      const response = await adminService.food.getFoods(token, 
-         currentPage,
-         20,
-         searchQuery,
-         selectedRestaurant !== 'all' ? selectedRestaurant : undefined,
-         selectedCategory !== 'all' ? selectedCategory : undefined,
+      // Call the API with all parameters - let backend handle filtering
+      const response = await adminService.food.getFoods(
+        token, 
+        currentPage,
+        20, // limit
+        searchQuery, // search
+        restaurantParam, // restaurantId
+        categoryParam, // categoryId
+        statusParam
       );
 
-      // Filter out any invalid food items
-      const validFoods = (response.items || []).filter((food: FoodPreview) => 
-        food && typeof food === 'object' && food.id
-      );
+      // Only basic validation, no frontend filtering since backend handles it
+      const validFoods = (response.items || []).filter((food: FoodPreview) => {
+        return food && typeof food === 'object' && food.id;
+      });
 
       setFoods(validFoods);
       setTotalPages(response.totalPages || 1);
     } catch (error) {
       console.error('Error fetching foods:', error);
-      setFoods([]); // Reset to empty array on error
+      setFoods([]);
     } finally {
       setLoading(false);
     }
@@ -76,14 +98,13 @@ export default function AdminFoodsPage() {
       
       const response = await adminService.restaurant.getRestaurants(token, 1, 100);
       
-      // Filter out any invalid restaurant items and ensure they have required properties
-      const validRestaurants = (response.items || []).filter((restaurant: Restaurant) => 
-        restaurant && 
-        typeof restaurant === 'object' && 
-        restaurant.id && 
-        restaurant.name &&
-        restaurant.name.trim() !== ''
-      );
+      const validRestaurants = (response.items || []).filter((restaurant: Restaurant) => {
+        return restaurant && 
+          typeof restaurant === 'object' && 
+          restaurant.id && 
+          restaurant.name &&
+          restaurant.name.trim() !== '';
+      });
 
       setRestaurants(validRestaurants);
     } catch (error) {
@@ -98,8 +119,15 @@ export default function AdminFoodsPage() {
 
       const response = await adminService.Category.getCategories(token, 1, 100);
 
-      setCategories(response.items || []);
-      // setCategories(response.items || []);
+      const validCategories = (response.items || []).filter((category: Category) => {
+        return category && 
+          typeof category === 'object' && 
+          category.id && 
+          category.name &&
+          category.name.trim() !== '';
+      });
+
+      setCategories(validCategories);
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
@@ -111,11 +139,7 @@ export default function AdminFoodsPage() {
   }, []);
 
   const handleDeleteFood = async (foodId: string) => {
-    if (!foodId) {
-      console.error('Invalid food ID');
-      return;
-    }
-
+    if (!foodId) return;
     if (!confirm('Bạn có chắc chắn muốn xóa món ăn này?')) return;
     
     try {
@@ -148,18 +172,6 @@ export default function AdminFoodsPage() {
     }
   };
 
-  // Safe filtering with null checks
-  const filteredFoods = foods.filter(food => {
-    if (!food || !food.name || !food.restaurant) return false;
-    
-    const matchesSearch = food.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         (food.restaurant.name && food.restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    const matchesStatus = selectedStatus === 'all' || food.status === selectedStatus;
-    
-    return matchesSearch && matchesStatus;
-  });
-
   // Safe statistics calculation
   const getStats = () => {
     const validFoods = foods.filter(f => f && f.status);
@@ -173,6 +185,47 @@ export default function AdminFoodsPage() {
 
   const stats = getStats();
 
+  // Handle filter changes - these will trigger the useEffect to fetch new data
+  const handleRestaurantFilterChange = (value: string) => {
+    setSelectedRestaurant(value);
+    setCurrentPage(1); // Reset to first page when filter changes
+  };
+
+  const handleStatusFilterChange = (value: string) => {
+    setSelectedStatus(value);
+    setCurrentPage(1); // Reset to first page when filter changes
+  };
+
+  const handleCategoryFilterChange = (value: string) => {
+    setSelectedCategory(value);
+    setCurrentPage(1); // Reset to first page when filter changes
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    setCurrentPage(1); // Reset to first page when search changes
+  };
+
+  // Safe display of restaurant name
+  const getRestaurantName = (food: FoodPreview): string => {
+    if (food.restaurant && typeof food.restaurant === 'object' && food.restaurant.name) {
+      return food.restaurant.name;
+    }
+    return 'Nhà hàng không xác định';
+  };
+
+  // Safe display of category name
+  const getCategoryName = (food: FoodPreview): string => {
+    if (food.category && typeof food.category === 'object' && food.category.name) {
+      return food.category.name;
+    }
+    if (food.category && typeof food.category === 'string') {
+      return food.category;
+    }
+    return '';
+  };
+
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -184,14 +237,6 @@ export default function AdminFoodsPage() {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
-          <Button variant="outline" className="flex items-center gap-2">
-            <Filter className="w-4 h-4" />
-            Xuất báo cáo
-          </Button>
-          <Button className="flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            Thêm món ăn mới
-          </Button>
         </div>
       </div>
 
@@ -205,20 +250,19 @@ export default function AdminFoodsPage() {
               <Input
                 placeholder="Tìm kiếm món ăn, nhà hàng..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={handleSearchChange}
                 className="pl-10"
               />
             </div>
 
-            {/* Restaurant Filter - Fixed with null checks */}
-            <Select value={selectedRestaurant} onValueChange={setSelectedRestaurant}>
+            {/* Restaurant Filter */}
+            <Select value={selectedRestaurant} onValueChange={handleRestaurantFilterChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Chọn nhà hàng" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả nhà hàng ({restaurants.length})</SelectItem>
                 {restaurants.map((restaurant) => {
-                  // Additional safety check
                   if (!restaurant || !restaurant.id || !restaurant.name) {
                     return null;
                   }
@@ -228,12 +272,12 @@ export default function AdminFoodsPage() {
                       {restaurant.name}
                     </SelectItem>
                   );
-                }).filter(Boolean)} {/* Remove any null items */}
+                }).filter(Boolean)}
               </SelectContent>
             </Select>
 
             {/* Status Filter */}
-            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+            <Select value={selectedStatus} onValueChange={handleStatusFilterChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
@@ -248,32 +292,30 @@ export default function AdminFoodsPage() {
             </Select>
 
             {/* Category Filter */}
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <Select value={selectedCategory} onValueChange={handleCategoryFilterChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Danh mục" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả danh mục</SelectItem>
-                {/* Add categories here */}
-              {categories.map((category) => {
-                // Additional safety check
-                if (!category || !category.id || !category.name) {
-                  return null;
-                }
-                
-                return (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.name}
-                  </SelectItem>
-                );
-              })}
+                <SelectItem value="all">Tất cả danh mục ({categories.length})</SelectItem>
+                {categories.map((category) => {
+                  if (!category || !category.id || !category.name) {
+                    return null;
+                  }
+                  
+                  return (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
         </CardContent>
       </Card>
 
-      {/* Statistics Cards - Updated with safe calculations */}
+      {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-6">
@@ -336,7 +378,7 @@ export default function AdminFoodsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Danh sách món ăn ({filteredFoods.length})</span>
+            <span>Danh sách món ăn ({foods.length})</span>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-500">
                 Trang {currentPage} / {totalPages}
@@ -351,8 +393,7 @@ export default function AdminFoodsPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredFoods.map((food) => {
-                // Additional safety check in render
+              {foods.map((food) => {
                 if (!food || !food.id) return null;
 
                 return (
@@ -365,12 +406,11 @@ export default function AdminFoodsPage() {
                       {food.image ? (
                         <Image
                           src={food.image}
-                          alt={food.name || 'Food image'}
+                          alt={food.name}
                           width={80}
                           height={80}
                           className="w-full h-full object-cover"
                           onError={(e) => {
-                            // Fallback for broken images
                             const target = e.target as HTMLImageElement;
                             target.src = '/images/food-placeholder.png';
                           }}
@@ -392,7 +432,7 @@ export default function AdminFoodsPage() {
                           <div className="flex items-center gap-2 mt-1">
                             <Store className="w-4 h-4 text-gray-400" />
                             <span className="text-sm text-gray-600 truncate">
-                              {food.restaurant?.name || 'Nhà hàng không xác định'}
+                              {getRestaurantName(food)}
                             </span>
                           </div>
                           <p className="text-sm text-gray-500 line-clamp-2 mt-1">
@@ -416,9 +456,9 @@ export default function AdminFoodsPage() {
                             <Badge className={getStatusColor(food.status)}>
                               {getFoodStatusText(food.status)}
                             </Badge>
-                            {food.category?.name && (
+                            {getCategoryName(food) && (
                               <Badge variant="outline" className="text-xs">
-                                {food.category.name}
+                                {getCategoryName(food)}
                               </Badge>
                             )}
                           </div>
@@ -458,7 +498,7 @@ export default function AdminFoodsPage() {
                 );
               })}
 
-              {filteredFoods.length === 0 && !loading && (
+              {foods.length === 0 && !loading && (
                 <div className="text-center py-12">
                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Search className="w-8 h-8 text-gray-400" />
@@ -467,7 +507,7 @@ export default function AdminFoodsPage() {
                     Không tìm thấy món ăn nào
                   </h3>
                   <p className="text-gray-600">
-                    {searchQuery || selectedStatus !== 'all' || selectedRestaurant !== 'all'
+                    {searchQuery || selectedStatus !== 'all' || selectedRestaurant !== 'all' || selectedCategory !== 'all'
                       ? 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm'
                       : 'Hiện tại không có món ăn nào trong hệ thống'
                     }

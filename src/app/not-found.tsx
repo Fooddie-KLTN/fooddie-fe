@@ -44,7 +44,7 @@ export default function NotFound() {
 
           <Link href="/" passHref>
             <Button
-              variant="primary"
+              variant="default"
               className="flex items-center gap-2"
             >
               <Home className="h-4 w-4" />
