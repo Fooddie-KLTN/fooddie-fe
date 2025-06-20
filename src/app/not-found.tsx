@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
-  BookOpen,
   GraduationCap,
   Home,
 } from "lucide-react";
@@ -29,8 +28,8 @@ export default function NotFound() {
         </h2>
 
         <p className="text-gray-600 mb-8">
-          Có vẻ như bạn đã đi lạc vào một khóa học không tồn tại. Hãy
-          quay lại và tiếp tục hành trình học tập của bạn nhé!
+          Có vẻ như bạn đã đi lạc vào một trang không tồn tại. Hãy
+          quay lại và tiếp tục tìm kiếm nhé!
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -43,16 +42,9 @@ export default function NotFound() {
             <span className="text-base">Quay lại</span>
           </Button>
 
-          <Link href="/collection" passHref>
-            <Button className="flex items-center border gap-2 hover:border-primary hover:text-primary">
-              <BookOpen className="h-4 w-4" />
-              <span className="text-base">Khám phá khóa học</span>
-            </Button>
-          </Link>
-
           <Link href="/" passHref>
             <Button
-              variant="ghost"
+              variant="primary"
               className="flex items-center gap-2"
             >
               <Home className="h-4 w-4" />
