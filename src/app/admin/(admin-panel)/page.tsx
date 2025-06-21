@@ -1,94 +1,224 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import LineChart from '@/components/ui/chart/line-chart';
 import StatCard from '@/components/ui/chart/stat-card';
 import BarChart from '@/components/ui/chart/bar-chart';
 import { Calendar1Icon, ChevronRightIcon } from 'lucide-react';
+import { adminService } from '@/api/admin';
+import { useAuth } from '@/context/auth-context';
 
 // Import reusable components
 import Header from '@/app/admin/(admin-panel)/_components/header';
-import NavigationBar from '@/app/admin/(admin-panel)/_components/tab';
 
 type TimePeriod = 'year' | 'month' | 'week';
-/**
- * @component AdminPage
- * 
- * @description
- * Trang Admin hiển thị dữ liệu thống kê về trang web.
- * Component này bao gồm biểu đồ đường thể hiện số lượng đơn hàng trong một khoảng thời gian,
- * biểu đồ cột thể hiện doanh thu trong một khoảng thời gian, và một tập hợp các thẻ thống kê
- * hiển thị số lượng học viên, học viên đã đăng ký và số lượng khóa học đã hoàn thành.
- * 
- * Component cũng bao gồm bộ lọc thời gian cho phép người dùng chọn khoảng thời gian
- * để xem dữ liệu. Các khoảng thời gian bao gồm năm, tháng và tuần.
- * 
- * @returns {React.ReactElement} Trang quản trị hiển thị dữ liệu thống kê
- */
+
+interface StatCardData {
+  title: string;
+  value: string;
+  previousValue: string;
+  change: string;
+  isPositive: boolean;
+}
+
+interface ChartData {
+  labels: string[];
+  values: number[];
+}
+
+// Update interfaces to match backend response
+interface DashboardStats {
+  totalShippers: number;
+  activeShippers: number;
+  completedOrders: number;
+  totalRevenue: number;
+}
+
+interface ShipperStats {
+  period: string;
+  activeShippers: number;
+  totalDeliveries: number;
+}
+
+interface OrderStats {
+  period: string;
+  totalOrders: number;
+  completedOrders: number;
+  completionRate: number;
+  breakdown: Array<{
+    status: string;
+    count: number;
+    percentage: string;
+  }>;
+}
+
 const AdminPage = () => {
+    const { getToken } = useAuth();
     const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('year');
-    const [selectedMetric, setSelectedMetric] = useState<'overview' | 'orders' | 'revenue'>('overview');
-
-    const STAT_CARDS_DATA = [
-        {
-            title: "Shipper",
-            value: "13.281",
-            previousValue: "12.491",
-            change: "+13.28% so với năm trước",
-            isPositive: true,
-        },
-        {
-            title: "Shipper Hoạt Động",
-            value: "9.491",
-            previousValue: "8.564",
-            change: "+10.38% so với năm trước",
-            isPositive: true,
-        },
-        {
-            title: "Hoàn thành đơn hàng",
-            value: "90.672",
-            previousValue: "4.821",
-            change: "-11% so với năm trước",
-            isPositive: false,
-        }
-    ];
-
-    // Data for different time periods
-    const chartData = {
-        year: {
-            order: {
-                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                values: [150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250, 260],
-            },
-            revenue: {
-                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                values: [500, 300, 700, 400, 600, 200, 800, 500, 600, 700, 900, 800],
-            },
-        },
-        month: {
-            order: {
-                labels: Array.from({ length: 30 }, (_, i) => `${i + 1}`),
-                values: Array.from({ length: 30 }, () => Math.floor(Math.random() * 100) + 150),
-            },
-            revenue: {
-                labels: Array.from({ length: 30 }, (_, i) => `${i + 1}`),
-                values: Array.from({ length: 30 }, () => Math.floor(Math.random() * 400) + 400),
-            },
-        },
-        week: {
-            order: {
-                labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
-                values: [180, 190, 200, 210, 220, 230, 240],
-            },
-            revenue: {
-                labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
-                values: [600, 500, 700, 800, 600, 900, 700],
-            },
-        },
-    } as const;
+    const [selectedMetric, ] = useState<'overview' | 'orders' | 'revenue'>('overview');
     
-    // Get current data based on selected period
-    const currentData = chartData[selectedPeriod];
+    // State for API data
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [statsData, setStatsData] = useState<StatCardData[]>([]);
+    const [chartData, setChartData] = useState<{
+        order: ChartData;
+        revenue: ChartData;
+    }>({
+        order: { labels: [], values: [] },
+        revenue: { labels: [], values: [] }
+    });
+
+    // Fetch dashboard data
+    const fetchDashboardData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const token = getToken();
+            if (!token) {
+                setError('Không tìm thấy token xác thực');
+                return;
+            }
+
+            // Fetch all data with better error handling
+            const results = await Promise.allSettled([
+                adminService.dashboard.getDashboardStats(token),
+                adminService.dashboard.getShipperStats(token, selectedPeriod),
+                adminService.dashboard.getOrderCompletionStats(token, selectedPeriod),
+                adminService.dashboard.getChartData(token, selectedPeriod, 'orders'),
+                adminService.dashboard.getChartData(token, selectedPeriod, 'revenue')
+            ]);
+
+            // Process results and handle any failures
+            const [
+                dashboardStatsResult,
+                shipperStatsResult,
+                orderStatsResult,
+                orderChartResult,
+                revenueChartResult
+            ] = results;
+
+            // Default values
+            const defaultDashboardStats: DashboardStats = {
+                totalShippers: 0,
+                activeShippers: 0,
+                completedOrders: 0,
+                totalRevenue: 0
+            };
+
+            const defaultShipperStats: ShipperStats = {
+                period: selectedPeriod,
+                activeShippers: 0,
+                totalDeliveries: 0
+            };
+
+            const defaultOrderStats: OrderStats = {
+                period: selectedPeriod,
+                totalOrders: 0,
+                completedOrders: 0,
+                completionRate: 0,
+                breakdown: []
+            };
+
+            const defaultChartData: ChartData = {
+                labels: [],
+                values: []
+            };
+
+            // Extract successful results or use defaults
+            const dashboardStats = dashboardStatsResult.status === 'fulfilled' 
+                ? dashboardStatsResult.value 
+                : defaultDashboardStats;
+
+            const shipperStats = shipperStatsResult.status === 'fulfilled' 
+                ? shipperStatsResult.value 
+                : defaultShipperStats;
+
+            const orderStats = orderStatsResult.status === 'fulfilled' 
+                ? orderStatsResult.value 
+                : defaultOrderStats;
+
+            const orderChartData = orderChartResult.status === 'fulfilled' 
+                ? orderChartResult.value 
+                : defaultChartData;
+
+            const revenueChartData = revenueChartResult.status === 'fulfilled' 
+                ? revenueChartResult.value 
+                : defaultChartData;
+
+            // Log any failed requests
+            results.forEach((result, index) => {
+                if (result.status === 'rejected') {
+                    console.error(`API call ${index} failed:`, result.reason);
+                }
+            });
+
+            // Format stats data for StatCard components using actual backend data
+            const formattedStats: StatCardData[] = [
+                {
+                    title: "Tổng Shipper",
+                    value: dashboardStats.totalShippers?.toLocaleString() || '0',
+                    previousValue: '0', // Since backend doesn't provide previous period data
+                    change: `${shipperStats.activeShippers} shipper đang hoạt động`,
+                    isPositive: shipperStats.activeShippers > 0,
+                },
+                {
+                    title: "Shipper Hoạt Động",
+                    value: shipperStats.activeShippers?.toLocaleString() || '0',
+                    previousValue: '0',
+                    change: `${shipperStats.totalDeliveries} giao hàng trong ${getPeriodText(selectedPeriod)}`,
+                    isPositive: shipperStats.totalDeliveries > 0,
+                },
+                {
+                    title: "Đơn Hàng Hoàn Thành",
+                    value: orderStats.completedOrders?.toLocaleString() || '0',
+                    previousValue: orderStats.totalOrders?.toLocaleString() || '0',
+                    change: `${orderStats.completionRate?.toFixed(1) || '0'}% tỷ lệ hoàn thành`,
+                    isPositive: orderStats.completionRate > 50,
+                }
+            ];
+
+            setStatsData(formattedStats);
+            
+            // Set chart data with proper fallbacks
+            setChartData({
+                order: {
+                    labels: orderChartData.order?.labels || orderChartData.labels || [],
+                    values: orderChartData.order?.values || orderChartData.values || []
+                },
+                revenue: {
+                    labels: revenueChartData.revenue?.labels || revenueChartData.labels || [],
+                    values: revenueChartData.revenue?.values || revenueChartData.values || []
+                }
+            });
+
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+            setError(error instanceof Error ? error.message : 'Có lỗi xảy ra khi tải dữ liệu');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Helper function to get period text
+    const getPeriodText = (period: TimePeriod): string => {
+        switch (period) {
+            case 'year': return 'năm';
+            case 'month': return 'tháng';
+            case 'week': return 'tuần';
+            default: return 'kỳ';
+        }
+    };
+
+    // Fetch data when component mounts or period changes
+    useEffect(() => {
+        fetchDashboardData();
+    }, [selectedPeriod]);
+
+    // Handle period change
+    const handlePeriodChange = (period: TimePeriod) => {
+        setSelectedPeriod(period);
+    };
 
     // Header configuration
     const headerActions = [
@@ -100,42 +230,63 @@ const AdminPage = () => {
         },
     ];
 
-    // Tab configuration
-    const tabs = [
-        {
-            key: 'overview',
-            label: 'Tổng quan'
-        },
-        {
-            key: 'orders',
-            label: 'Đơn hàng'
-        },
-        {
-            key: 'revenue',
-            label: 'Doanh thu'
-        }
-    ];
+
+    // Loading state
+    if (loading) {
+        return (
+            <div className="p-4">
+                <Header 
+                    title="Thống kê"
+                    description="Đang tải dữ liệu thống kê..."
+                    actions={headerActions}
+                />
+                <div className="flex items-center justify-center h-64">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+            </div>
+        );
+    }
+
+    // Error state
+    if (error) {
+        return (
+            <div className="p-4">
+                <Header 
+                    title="Thống kê"
+                    description="Có lỗi xảy ra khi tải dữ liệu"
+                    actions={headerActions}
+                />
+                <div className="flex items-center justify-center h-64">
+                    <div className="text-center">
+                        <p className="text-red-600 mb-4">{error}</p>
+                        <button
+                            onClick={fetchDashboardData}
+                            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                        >
+                            Thử lại
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Get safe chart data for rendering
 
     return (
         <div className="p-4">
-            {/* Header - Using the Header component */}
+            {/* Header */}
             <Header 
                 title="Thống kê"
-                description="Quan sát tại danh sách các thành viên đã hoàn thành khóa học trong vòng 12 tháng"
+                description="Quan sát dữ liệu thống kê hệ thống trong thời gian thực"
                 actions={headerActions}
             />
 
-            {/* Navigation Tabs - Using the NavigationBar component */}
-            <NavigationBar
-                activeTab={selectedMetric}
-                onTabChange={(tab) => setSelectedMetric(tab as 'overview' | 'orders' | 'revenue')}
-                tabs={tabs}
-            />
 
             {/* Time Filter */}
             <div className="flex flex-wrap space-x-0 space-y-2 sm:space-x-4 sm:space-y-0 mb-6">
                 <button
-                    onClick={() => setSelectedPeriod('year')}
+                    onClick={() => handlePeriodChange('year')}
                     className={`px-4 py-2 rounded-lg transition-colors ${selectedPeriod === 'year'
                             ? 'bg-blue-500 text-white'
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -144,7 +295,7 @@ const AdminPage = () => {
                     12 tháng
                 </button>
                 <button
-                    onClick={() => setSelectedPeriod('month')}
+                    onClick={() => handlePeriodChange('month')}
                     className={`px-4 py-2 rounded-lg transition-colors ${selectedPeriod === 'month'
                             ? 'bg-blue-500 text-white'
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -153,7 +304,7 @@ const AdminPage = () => {
                     30 ngày
                 </button>
                 <button
-                    onClick={() => setSelectedPeriod('week')}
+                    onClick={() => handlePeriodChange('week')}
                     className={`px-4 py-2 rounded-lg transition-colors ${selectedPeriod === 'week'
                             ? 'bg-blue-500 text-white'
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -172,7 +323,7 @@ const AdminPage = () => {
                 <>
                     {/* Statistical Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                        {STAT_CARDS_DATA.map((card, index) => (
+                        {statsData.map((card, index) => (
                             <StatCard key={index} {...card} />
                         ))}
                     </div>
@@ -181,13 +332,12 @@ const AdminPage = () => {
                     <div className="bg-white p-6 rounded-lg shadow-md mb-6">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-xl font-semibold">Đơn hàng</h2>
-                            <button className="text-blue-500 hover:underline">Chi tiết</button>
                         </div>
                         <LineChart
-                            data={[...currentData.order.values]}
-                            labels={[...currentData.order.labels]}
+                            data={chartData.order.values}
+                            labels={chartData.order.labels}
                             label="Đơn hàng"
-                            maxValue={300}
+                            maxValue={Math.max(...chartData.order.values) * 1.2}
                             color="#1E3A8A"
                             fillColor="rgba(30, 58, 138, 0.1)"
                         />
@@ -197,13 +347,12 @@ const AdminPage = () => {
                     <div className="bg-white p-6 rounded-lg shadow-md">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-xl font-semibold">Doanh số</h2>
-                            <button className="text-blue-500 hover:underline">Chi tiết</button>
                         </div>
                         <BarChart
-                            data={[...currentData.revenue.values]}
-                            labels={[...currentData.revenue.labels]}
+                            data={chartData.revenue.values}
+                            labels={chartData.revenue.labels}
                             label="Doanh số"
-                            maxValue={1000}
+                            maxValue={Math.max(...chartData.revenue.values) * 1.2}
                             backgroundColor="#E5E7EB"
                             borderRadius={4}
                             barThickness={32}
@@ -219,10 +368,10 @@ const AdminPage = () => {
                         <button className="text-blue-500 hover:underline">Chi tiết</button>
                     </div>
                     <LineChart
-                        data={[...currentData.order.values]}
-                        labels={[...currentData.order.labels]}
+                        data={chartData.order.values}
+                        labels={chartData.order.labels}
                         label="Đơn hàng"
-                        maxValue={300}
+                        maxValue={Math.max(...chartData.order.values) * 1.2}
                         color="#1E3A8A"
                         fillColor="rgba(30, 58, 138, 0.1)"
                     />
@@ -236,10 +385,10 @@ const AdminPage = () => {
                         <button className="text-blue-500 hover:underline">Chi tiết</button>
                     </div>
                     <BarChart
-                        data={[...currentData.revenue.values]}
-                        labels={[...currentData.revenue.labels]}
+                        data={chartData.revenue.values}
+                        labels={chartData.revenue.labels}
                         label="Doanh số"
-                        maxValue={1000}
+                        maxValue={Math.max(...chartData.revenue.values) * 1.2}
                         backgroundColor="#E5E7EB"
                         borderRadius={4}
                         barThickness={32}

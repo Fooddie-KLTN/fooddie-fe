@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Category, FoodPreview, Restaurant } from '@/interface';
 import Image from 'next/image';
 import { 
-  Search, Eye, Edit, Trash2, 
+  Search, Eye, Trash2, 
   Store, Star, Clock, DollarSign, AlertTriangle 
 } from 'lucide-react';
 import {
@@ -21,6 +21,7 @@ import {
 import { adminService } from '@/api/admin';
 import { useAuth } from '@/context/auth-context';
 import { getFoodStatusText, FOOD_STATUS } from '@/lib/utils';
+import { FoodDetailModal } from './_components/food-detail-modal';
 
 export default function AdminFoodsPage() {
   const { getToken } = useAuth();
@@ -35,6 +36,10 @@ export default function AdminFoodsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [searchDebounce, setSearchDebounce] = useState<NodeJS.Timeout | null>(null);
+
+  // Modal state
+  const [selectedFoodId, setSelectedFoodId] = useState<string | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   // Fetch foods with filters - using backend parameters
   useEffect(() => {
@@ -138,6 +143,16 @@ export default function AdminFoodsPage() {
     fetchCategories();
   }, []);
 
+  const handleViewFood = (foodId: string) => {
+    setSelectedFoodId(foodId);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedFoodId(null);
+  };
+
   const handleDeleteFood = async (foodId: string) => {
     if (!foodId) return;
     if (!confirm('Bạn có chắc chắn muốn xóa món ăn này?')) return;
@@ -235,8 +250,6 @@ export default function AdminFoodsPage() {
           <p className="text-gray-600 mt-1">
             Quản lý tất cả món ăn từ các nhà hàng trên hệ thống
           </p>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-3">
         </div>
       </div>
 
@@ -471,18 +484,11 @@ export default function AdminFoodsPage() {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => handleViewFood(food.id!)}
                         className="flex items-center gap-1"
                       >
                         <Eye className="w-4 h-4" />
                         <span className="hidden sm:inline">Xem</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-1"
-                      >
-                        <Edit className="w-4 h-4" />
-                        <span className="hidden sm:inline">Sửa</span>
                       </Button>
                       <Button
                         variant="outline"
@@ -543,6 +549,13 @@ export default function AdminFoodsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Food Detail Modal */}
+      <FoodDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={handleCloseDetailModal}
+        foodId={selectedFoodId}
+      />
     </div>
   );
 }
