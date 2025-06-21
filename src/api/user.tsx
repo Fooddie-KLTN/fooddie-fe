@@ -28,7 +28,15 @@ export interface RestaurantResponse {
   statusCode?: number;
 }
 
-
+/**
+ * DTO for creating food review
+ */
+interface CreateFoodReviewDto {
+  foodId: string;
+  comment: string;
+  image: string;
+  rating: number;
+}
 
 /**
  * Dịch vụ API cho người dùng đã xác thực
@@ -386,6 +394,56 @@ export const userApi = {
         throw error;
       }
     },
-  }
+  },
+  /**
+   * Đánh giá và nhận xét món ăn
+   */
+  review: {
+    /**
+     * Tạo đánh giá cho món ăn
+     * @param {string} token - Token xác thực
+     * @param {CreateFoodReviewDto} data - Dữ liệu đánh giá
+     * @returns {Promise<any>} - Thông tin đánh giá đã tạo
+     */
+    async createFoodReview(token: string, data: CreateFoodReviewDto): Promise<any> {
+      try {
+        return await apiRequest<any>('/reviews/food', 'POST', { token, data });
+      } catch (error) {
+        console.error('Food review API error:', error);
+        throw error;
+      }
+    },
+
+    /**
+     * Lấy danh sách đánh giá của món ăn
+     * @param {string} foodId - ID món ăn
+     * @param {number} page - Số trang
+     * @param {number} pageSize - Số lượng đánh giá trên mỗi trang
+     * @returns {Promise<PaginatedResponse<any>>} - Danh sách đánh giá
+     */
+    async getFoodReviews(foodId: string, page: number = 1, pageSize: number = 10): Promise<PaginatedResponse<any>> {
+      try {
+        return await apiRequest<PaginatedResponse<any>>(`/reviews/food/${foodId}?page=${page}&pageSize=${pageSize}`, 'GET');
+      } catch (error) {
+        console.error('Get food reviews API error:', error);
+        throw error;
+      }
+    },
+
+    /**
+     * Kiểm tra xem người dùng đã đánh giá món ăn này chưa
+     * @param {string} token - Token xác thực
+     * @param {string} foodId - ID món ăn
+     * @returns {Promise<{hasReviewed: boolean}>} - Trạng thái đã đánh giá
+     */
+    async checkFoodReviewStatus(token: string, foodId: string): Promise<{hasReviewed: boolean}> {
+      try {
+        return await apiRequest<{hasReviewed: boolean}>(`/reviews/food/${foodId}/status`, 'GET', { token });
+      } catch (error) {
+        console.error('Check food review status API error:', error);
+        throw error;
+      }
+    }
+  },
 
 };
