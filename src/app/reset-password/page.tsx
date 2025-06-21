@@ -66,11 +66,11 @@ export default function ResetPasswordPage() {
 
     try {
       // Call your reset password API
-      await authService.resetPassword({
+      await authService.resetPassword(
         token,
-        email: decodeURIComponent(email),
+        decodeURIComponent(email),
         newPassword
-      });
+      );
 
       setSuccess(true);
       
@@ -81,8 +81,11 @@ export default function ResetPasswordPage() {
 
     } catch (err) {
       console.error("Reset password error:", err);
+      if (err instanceof Error) {
+        setError(err.message);
+      }
+      else
       setError(
-        err?.message || 
         "Có lỗi xảy ra khi đặt lại mật khẩu. Vui lòng thử lại."
       );
     } finally {

@@ -1,3 +1,5 @@
+import { FOOD_STATUS } from "@/lib/utils";
+
 export enum RestaurantStatus {
   PENDING = 'pending',
   APPROVED = 'approved',
@@ -26,6 +28,7 @@ export interface Ward {
   id: number;
   name: string;
 }
+
 export interface Address {
     id?: string; // Unique ID for each address (e.g., UUID or DB ID)
     label?: string; // Optional label like "Home", "Work"
@@ -49,6 +52,7 @@ export interface UserProfile {
 
   currentAddress?: Address; // Optional: Current address for quick access
 }
+
 /**
  * Interface for restaurant details
  */
@@ -97,19 +101,21 @@ export interface Restaurant {
   };
 }
 
+// Type for food status using the FOOD_STATUS const
+export type FoodStatus = typeof FOOD_STATUS[keyof typeof FOOD_STATUS];
+
 /**
  * Food preview interface for lists, cards, and rows
  */
 export interface FoodPreview {
   id?: string;
-    imageUrls: string[]; // Array of image URLs
-
+  imageUrls: string[]; // Array of image URLs
   name: string;
   description: string;
   price: number | string; // Price can be a number or string
   image: string;
   discountPercent?: number;
-  status?: string;
+  status?: FoodStatus; // Now uses the FOOD_STATUS const type
   tag?: string;
   preparationTime?: number;
   rating?: number;
@@ -123,8 +129,6 @@ export interface FoodPreview {
   // Related information
   category?: Category;
   restaurant: Restaurant;
-
-  
 }
 
 export interface Review {
@@ -142,6 +146,7 @@ export interface Review {
     avatar?: string;
   };
 }
+
 /**
  * Detailed food information with complete data
  */
@@ -154,8 +159,6 @@ export interface FoodDetail extends FoodPreview {
   reviews?: Review[]; // Optional reviews array
 
   totalReviews?: number; // <-- Added: total number of reviews
-
-
 }
 
 /**
@@ -171,6 +174,7 @@ export interface CartItem {
   discountPercent?: number;
   restaurantId?: string;
 }
+
 export interface OrderDetail {
   id: string;
   order: string | Order; // Usually just orderId, but can be populated
@@ -180,6 +184,7 @@ export interface OrderDetail {
   price: number | string;
   note?: string;
 }
+
 export enum PromotionType {
   FOOD_DISCOUNT = 'FOOD_DISCOUNT',
   SHIPPING_DISCOUNT = 'SHIPPING_DISCOUNT'
@@ -227,12 +232,14 @@ export enum ShippingStatus {
     CANCELLED = 'CANCELLED',
     RETURNED = 'RETURNED',
 }
+
 export interface ShippingDetail {
   id?: string;
   order: Order;
   shipper: UserProfile;
   status: ShippingStatus;
 }
+
 /**
  * Helper function to convert food to cart item
  */
@@ -247,4 +254,21 @@ export function foodToCartItem(food: FoodPreview, quantity: number = 1): CartIte
     discountPercent: food.discountPercent,
     restaurantId: food.restaurant?.id
   };
+}
+
+/**
+ * Type guard to check if a food status is valid
+ */
+export function isValidFoodStatus(status: string): status is FoodStatus {
+  return Object.values(FOOD_STATUS).includes(status as FoodStatus);
+}
+
+/**
+ * Helper function to safely get food status with fallback
+ */
+export function getFoodStatus(food: FoodPreview): FoodStatus {
+  if (food.status && isValidFoodStatus(food.status)) {
+    return food.status;
+  }
+  return FOOD_STATUS.PENDING; // Default fallback
 }

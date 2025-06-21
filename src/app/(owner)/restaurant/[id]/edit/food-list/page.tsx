@@ -48,7 +48,7 @@ export default function FoodListPage() {
     }, [restaurantId]);
 
     const handleToggle = async (foodId: string, checked: boolean) => {
-        const newStatus = checked ? "available" : "unavailable";
+        const newStatus = checked ? "available" : "hidden";
         if (!token) return;
         await userApi.food.updateFoodStatus(token, foodId, newStatus);
         setFoods((prev) =>

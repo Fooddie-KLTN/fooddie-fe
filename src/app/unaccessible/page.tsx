@@ -18,7 +18,7 @@ const UnaccessiblePage = () => {
         <ShieldAlert className="w-16 h-16 mx-auto text-red-500 mb-4" />
         <h1 className="text-2xl font-bold text-gray-800 mb-2">Không có quyền truy cập</h1>
         <p className="text-gray-600 mb-6">
-          Bạn không có quyền truy cập do chưa mua khóa học. Vui lòng mua khóa học hoặc liên hệ quản trị viên nếu bạn cần hỗ trợ.
+          Bạn không có quyền truy cập do chưa đăng nhập. Vui lòng đăng nhập hoặc đăng ký.
         </p>
         <Button 
           className="flex items-center justify-center gap-2 w-full hover:outline-primary hover:text-primary" 

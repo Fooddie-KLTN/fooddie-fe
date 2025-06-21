@@ -11,6 +11,7 @@ import RestaurantCard from "./_components/restaurant-card";
 import { guestService, GuestPromotionResponse } from "@/api/guest";
 import { useGeo } from "@/context/geolocation-context";
 import { useDebounce } from "@/hooks/use-debounce";
+import { getFoodsGroupedByAvailability } from "@/lib/utils";
 
 export default function Home() {
   const { location } = useGeo();
@@ -50,9 +51,9 @@ export default function Home() {
           guestService.category.getCategories(1, 20),
           guestService.promotion.getActivePromotions(1, 10)
         ]);
-        setFoods(foodsRes.items ?? []);
-        setTopSellingFoods(topSellingRes.items ?? []);
-        setNearbyFoods(nearbyRes.items ?? []);
+        setFoods( (await getFoodsGroupedByAvailability(foodsRes.items)).available ?? []);
+        setTopSellingFoods((await getFoodsGroupedByAvailability(topSellingRes.items)).available ?? []);
+        setNearbyFoods((await getFoodsGroupedByAvailability(nearbyRes.items)).available ?? []);
         setRestaurants(restaurantsRes.items ?? []);
         setCategories(categoriesRes.items ?? []);
         setPromotions(promotionsRes?.items ?? []);
