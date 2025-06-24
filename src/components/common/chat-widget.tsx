@@ -1,30 +1,45 @@
 'use client';
 
 import { useAuth } from '@/context/auth-context';
+import { useRouter } from 'next/navigation';
 import React, { useEffect, useRef, useState } from 'react';
 
 const isClient = typeof window !== 'undefined';
 const sendSound = isClient ? new Audio('/sounds/send.mp3') : null;
 const receiveSound = isClient ? new Audio('/sounds/receive.mp3') : null;
 
+
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<{ from: 'user' | 'bot'; text: string }[]>([]);
+  type Message = {
+    from: 'user' | 'bot';
+    text?: string;
+    foodCards?: {
+      id: string;
+      name: string;
+      price: number;
+      image: string;
+      link: string;
+    }[];
+  };
+  
+  
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
 
   const { getToken } = useAuth();
+  const router = useRouter();
 
   const sendMessage = async () => {
     if (!input.trim()) return;
-
-    // Gửi tin nhắn người dùng lên UI
+  
     setMessages((prev) => [...prev, { from: 'user', text: input }]);
     sendSound?.play();
     setInput('');
     setIsTyping(true);
-
+  
     try {
       const token = await getToken();
       console.log('[TOKEN]', token);
@@ -32,25 +47,45 @@ export default function ChatWidget() {
         console.error('[AUTH] Token không tồn tại!');
         throw new Error('Chưa đăng nhập hoặc token không tồn tại');
       }
-
+  
       const res = await fetch('http://localhost:3001/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ userMessage: input }),
       });
-
+  
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || 'Lỗi không xác định từ server');
       }
-
+  
       const data = await res.json();
       console.log('[BOT REPLY]', data);
-
-      setMessages((prev) => [...prev, { from: 'bot', text: data.reply }]);
+  
+      // ✅ fallback xử lý nếu data.reply bị lồng object
+      const actualReply =
+        typeof data.reply === 'string'
+          ? data.reply
+          : data.reply?.reply || 'Bot không trả lời được.';
+  
+      const actualSuggestions = Array.isArray(data.reply?.suggestions)
+        ? data.reply.suggestions
+        : Array.isArray(data.suggestions)
+          ? data.suggestions
+          : [];
+  
+      setMessages((prev) => [
+        ...prev,
+        {
+          from: 'bot',
+          text: actualReply,
+          foodCards: actualSuggestions,
+        },
+      ]);
+  
       receiveSound?.play();
     } catch (err) {
       console.error('[BOT ERROR]', err);
@@ -62,6 +97,7 @@ export default function ChatWidget() {
       setIsTyping(false);
     }
   };
+  
 
   useEffect(() => {
     chatRef.current?.scrollTo(0, chatRef.current.scrollHeight);
@@ -105,6 +141,30 @@ export default function ChatWidget() {
                       `}
                     >
                       {msg.text}
+                      {msg.foodCards && msg.foodCards.length > 0 && (
+                        <div className="grid grid-cols-1 gap-2 mt-2">
+                          {msg.foodCards.map((food, i) => (
+                            <div
+                              key={i}
+                              onClick={() => router.push(food.link)}
+                              className="flex gap-2 border border-[#F3C871] bg-white rounded-lg p-2 shadow-sm cursor-pointer hover:shadow-md transition"
+                              title="Xem chi tiết món ăn"
+                            >
+                              <img
+                                src={food.image}
+                                alt={food.name}
+                                className="w-14 h-14 rounded object-cover border"
+                              />
+                              <div className="flex flex-col justify-between text-sm">
+                                <div className="font-semibold text-[#9F6508]">{food.name}</div>
+                                <div className="text-gray-600">
+                                  {Number(food.price).toLocaleString()}đ
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
