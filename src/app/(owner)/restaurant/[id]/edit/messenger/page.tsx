@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { userApi } from '@/api/user';
 import { useAuth } from '@/context/auth-context';
 import { Conversation, Message, ConversationType, SendMessageDto } from '@/interface';
@@ -12,8 +12,7 @@ import { MessageCircle, Send, Phone, User, Clock, Search, Filter } from 'lucide-
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useSubscription } from '@apollo/client';
-import { MESSAGE_SENT_SUBSCRIPTION, CONVERSATION_CREATED_SUBSCRIPTION, MESSAGES_READ_SUBSCRIPTION } from '@/lib/graphql/subcriptions/messengerSubscriptions';
-
+import { MESSAGE_SENT_SUBSCRIPTION, MESSAGES_READ_SUBSCRIPTION } from '@/lib/graphql/subcriptions/messengerSubscriptions';
 
 const RestaurantMessengerPage = () => {
   const { user, getToken } = useAuth();
@@ -27,55 +26,57 @@ const RestaurantMessengerPage = () => {
   const [loading, setLoading] = useState(true);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // Subscription for new messages in selected conversation
-  const { data: newMessageData } = useSubscription(MESSAGE_SENT_SUBSCRIPTION, {
+  const { data: newMessageData, error: messageError } = useSubscription(MESSAGE_SENT_SUBSCRIPTION, {
     variables: { conversationId: selectedConversation?.id || '' },
-    skip: !selectedConversation?.id,
-    onSubscriptionData: ({ subscriptionData }) => {
-      if (subscriptionData.data?.messageSent) {
-        const newMessage = subscriptionData.data.messageSent;
+    skip: !selectedConversation?.id || !getToken(),
+    onError: (error) => {
+      console.error('Message subscription error:', error);
+      setConnectionError('Failed to connect to real-time messaging');
+    },
+    onData: ({ data }) => {
+      console.log('New message received:', data.data);
+      if (data.data?.messageSent) {
+        const newMsg = data.data.messageSent;
+
+        // enable auto‐scroll for real‐time arrivals
+        setShouldAutoScroll(true);
+
         setMessages(prev => {
-          const messageExists = prev.some(msg => msg.id === newMessage.id);
-          if (messageExists) return prev;
-          return [...prev, newMessage];
+          const exists = prev.some(msg => msg.id === newMsg.id);
+          if (exists) return prev;
+          console.log('Adding new message to UI:', newMsg);
+          return [...prev, newMsg];
         });
         
+        // Update conversation last message
         setConversations(prev => prev.map(conv => 
-          conv.id === newMessage.conversation.id 
-            ? { ...conv, lastMessage: newMessage.content, lastMessageAt: new Date(newMessage.createdAt) }
+          conv.id === newMsg.conversation.id 
+            ? { 
+                ...conv, 
+                lastMessage: newMsg.content, 
+                lastMessageAt: new Date(newMsg.createdAt) 
+              }
             : conv
         ));
       }
-    }
-  });
-
-  // Subscription for new conversations related to this restaurant
-  const { data: newConversationData } = useSubscription(CONVERSATION_CREATED_SUBSCRIPTION, {
-    onSubscriptionData: ({ subscriptionData }) => {
-      if (subscriptionData.data?.conversationCreated) {
-        const newConversation = subscriptionData.data.conversationCreated;
-        if (newConversation.conversationType === ConversationType.CUSTOMER_SHOP && 
-            newConversation.restaurantId === restaurantId) {
-          setConversations(prev => {
-            const conversationExists = prev.some(conv => conv.id === newConversation.id);
-            if (conversationExists) return prev;
-            return [newConversation, ...prev];
-          });
-        }
-      }
-    }
+    },
   });
 
   // Subscription for read receipts
-  const { data: messagesReadData } = useSubscription(MESSAGES_READ_SUBSCRIPTION, {
+  const { data: messagesReadData, error: readError } = useSubscription(MESSAGES_READ_SUBSCRIPTION, {
     variables: { conversationId: selectedConversation?.id || '' },
-    skip: !selectedConversation?.id,
-    onSubscriptionData: ({ subscriptionData }) => {
-      if (subscriptionData.data?.messagesRead) {
-        
-        // Update message read status
+    skip: !selectedConversation?.id || !getToken(),
+    onError: (error) => {
+      console.error('Read receipts subscription error:', error);
+    },
+    onData: ({ data }) => {
+      if (data.data?.messagesRead) {
         setMessages(prev => prev.map(msg => 
           msg.sender.id === user?.id ? { ...msg, isRead: true, readAt: new Date() } : msg
         ));
@@ -83,21 +84,7 @@ const RestaurantMessengerPage = () => {
     }
   });
 
-  useEffect(() => {
-    if (getToken()) {
-      loadConversations();
-    }
-  }, [getToken]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     try {
       setLoading(true);
       const token = await getToken();
@@ -115,47 +102,39 @@ const RestaurantMessengerPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken, restaurantId]);
 
-  const loadMessages = async (conversationId: string) => {
+  const loadMessages = useCallback(async (conversationId: string) => {
     try {
       const token = await getToken();
       if (!token) return;
       
       const response = await userApi.messenger.getConversationMessages(token, conversationId);
+      console.log('Loaded messages:', response.items);
       setMessages(response.items);
       // Mark messages as read
       await userApi.messenger.markMessagesAsRead(token, conversationId);
     } catch (error) {
       console.error('Error loading messages:', error);
     }
-  };
+  }, [getToken]);
 
-  const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation || sendingMessage) return;
+  const sendMessage = useCallback(async () => {
+    if (!newMessage.trim() || !selectedConversation || sendingMessage || !user) return;
+
+    const messageContent = newMessage.trim();
+    const tempId = `temp_${Date.now()}`;
 
     try {
       setSendingMessage(true);
       const token = await getToken();
       if (!token) return;
 
-      const messageData: SendMessageDto = {
-        conversationId: selectedConversation.id,
-        content: newMessage.trim(),
-        messageType: 'text'
-      };
-
-       await userApi.messenger.sendMessage(token, messageData);
-      
-      // Don't add to messages here - let the subscription handle it
-      setNewMessage('');
-    } catch (error) {
-      console.error('Error sending message:', error);
-      // If sending fails, we can add it locally as a fallback
+      // Add optimistic message immediately
       const tempMessage: Message = {
-        id: Date.now().toString(),
-        content: newMessage.trim(),
-        sender: user!,
+        id: tempId,
+        content: messageContent,
+        sender: user,
         conversation: selectedConversation,
         messageType: 'text',
         isRead: false,
@@ -164,39 +143,87 @@ const RestaurantMessengerPage = () => {
         createdAt: new Date(),
         updatedAt: new Date()
       };
+      
+      console.log('Adding optimistic message:', tempMessage);
       setMessages(prev => [...prev, tempMessage]);
       setNewMessage('');
+
+      const messageData: SendMessageDto = {
+        conversationId: selectedConversation.id,
+        content: messageContent,
+        messageType: 'text'
+      };
+
+      const sentMessage = await userApi.messenger.sendMessage(token, messageData);
+      console.log('Message sent successfully:', sentMessage);
       
-      // Update conversation's last message
-      setConversations(prev => prev.map(conv => 
-        conv.id === selectedConversation.id 
-          ? { ...conv, lastMessage: newMessage.trim(), lastMessageAt: new Date() }
-          : conv
-      ));
+      // Replace temp message with real message
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === tempId ? sentMessage : msg
+        )
+      );
+
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // Remove temp message on error
+      setMessages(prev => prev.filter(msg => msg.id !== tempId));
+      setNewMessage(messageContent); // Restore message text
     } finally {
       setSendingMessage(false);
+      setShouldAutoScroll(true);
     }
-  };
+  }, [newMessage, selectedConversation, sendingMessage, user, getToken]);
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  // Clear connection error when token changes
+  useEffect(() => {
+    const token = getToken();
+    if (token) {
+      setConnectionError(null);
+    }
+  }, [getToken]);
+
+  // Load conversations when component mounts
+  useEffect(() => {
+    loadConversations();
+  }, [loadConversations]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (shouldAutoScroll && chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  }, [messages, shouldAutoScroll]);
+
+  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
-  };
+  }, [sendMessage]);
 
-  const getCustomer = (conversation: Conversation) => {
+  const getCustomer = useCallback((conversation: Conversation) => {
     return conversation.participant1.id === user?.id 
       ? conversation.participant2 
       : conversation.participant1;
-  };
+  }, [user?.id]);
 
-  const formatTime = (date: Date | string) => {
+  const formatTime = useCallback((date: Date | string) => {
     return formatDistanceToNow(new Date(date), { 
       addSuffix: true, 
       locale: vi 
     });
-  };
+  }, []);
+
+  const handleConversationSelect = useCallback((conversation: Conversation) => {
+    console.log('Selecting conversation:', conversation.id);
+    setShouldAutoScroll(false);
+    setSelectedConversation(conversation);
+    loadMessages(conversation.id);
+  }, [loadMessages]);
 
   const filteredConversations = conversations.filter(conv => {
     const customer = getCustomer(conv);
@@ -206,6 +233,31 @@ const RestaurantMessengerPage = () => {
 
   return (
     <div className="h-[calc(100vh-120px)] bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      {/* Connection Error Alert */}
+      {connectionError && (
+        <div className="p-4 bg-yellow-50 border-b border-yellow-200">
+          <div className="flex">
+            <svg className="w-5 h-5 text-yellow-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <div>
+              <p className="text-sm text-yellow-800">
+                {connectionError}. Tin nhắn mới có thể không hiển thị ngay lập tức.
+              </p>
+              <button 
+                onClick={() => {
+                  setConnectionError(null);
+                  window.location.reload();
+                }} 
+                className="text-sm text-yellow-800 underline hover:text-yellow-900"
+              >
+                Làm mới trang
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex h-full">
         {/* Sidebar - Conversations List */}
         <div className="w-1/3 border-r border-gray-200 flex flex-col">
@@ -264,10 +316,7 @@ const RestaurantMessengerPage = () => {
                 return (
                   <div
                     key={conversation.id}
-                    onClick={() => {
-                      setSelectedConversation(conversation);
-                      loadMessages(conversation.id);
-                    }}
+                    onClick={() => handleConversationSelect(conversation)}
                     className={`p-4 cursor-pointer hover:bg-gray-50 border-b border-gray-100 transition-colors ${
                       selectedConversation?.id === conversation.id ? 'bg-orange-50 border-orange-200' : ''
                     }`}
@@ -346,7 +395,10 @@ const RestaurantMessengerPage = () => {
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+              <div
+                ref={chatContainerRef}
+                className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50"
+              >
                 {messages.map((message) => {
                   const isOwn = message.sender.id === user?.id;
                   return (
@@ -370,6 +422,9 @@ const RestaurantMessengerPage = () => {
                             <div className="flex items-center space-x-1">
                               <Clock className="h-3 w-3" />
                               {message.isRead && <span className="text-xs">✓✓</span>}
+                              {message.id.startsWith('temp_') && (
+                                <span className="text-xs opacity-60">⏳</span>
+                              )}
                             </div>
                           )}
                         </div>

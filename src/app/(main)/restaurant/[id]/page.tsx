@@ -13,6 +13,7 @@ import { useAuth } from '@/context/auth-context';
 import { userApi } from '@/api/user';
 import { MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import Footer from '@/components/footer';
 
 
 // Format price helper function
@@ -154,6 +155,7 @@ export default function RestaurantPage() {
                 
                 <RestaurantMenu foods={foods} formatPrice={formatPrice} />
             </div>
+            <Footer />
         </div>
     );
 }

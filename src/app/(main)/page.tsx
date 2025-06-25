@@ -12,6 +12,7 @@ import { guestService, GuestPromotionResponse } from "@/api/guest";
 import { useGeo } from "@/context/geolocation-context";
 import { useDebounce } from "@/hooks/use-debounce";
 import { getFoodsGroupedByAvailability } from "@/lib/utils";
+import Footer from "@/components/footer";
 
 export default function Home() {
   const { location } = useGeo();
@@ -190,6 +191,7 @@ export default function Home() {
           formatPrice={formatPrice}
         />
       </div>
+      <Footer />
     </>
   );
 }

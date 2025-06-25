@@ -35,36 +35,36 @@ export const MESSAGE_SENT_SUBSCRIPTION = gql`
   }
 `;
 
-export const CONVERSATION_CREATED_SUBSCRIPTION = gql`
-  subscription ConversationCreated {
-    conversationCreated {
-      id
-      lastMessage
-      lastMessageAt
-      isBlocked
-      blockedBy
-      createdAt
-      updatedAt
-      conversationType
-      orderId
-      restaurantId
-      participant1 {
-        id
-        name
-        email
-        avatar
-        phone
-      }
-      participant2 {
-        id
-        name
-        email
-        avatar
-        phone
-      }
-    }
-  }
-`;
+// export const CONVERSATION_CREATED_SUBSCRIPTION = gql`
+//   subscription ConversationCreated {
+//     conversationCreated {
+//       id
+//       lastMessage
+//       lastMessageAt
+//       isBlocked
+//       blockedBy
+//       createdAt
+//       updatedAt
+//       conversationType
+//       orderId
+//       restaurantId
+//       participant1 {
+//         id
+//         name
+//         email
+//         avatar
+//         phone
+//       }
+//       participant2 {
+//         id
+//         name
+//         email
+//         avatar
+//         phone
+//       }
+//     }
+//   }
+// `;
 
 export const MESSAGES_READ_SUBSCRIPTION = gql`
   subscription MessagesRead($conversationId: String!) {

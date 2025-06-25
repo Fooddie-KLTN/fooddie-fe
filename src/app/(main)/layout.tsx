@@ -2,7 +2,6 @@
  * @fileoverview Layout chính của ứng dụng bao quanh tất cả các trang trong đường dẫn (main).
  */
 "use client";
-import Footer from "@/components/footer";
 import Navbar from "@/components/ui/navigation/navbar";
 import { CartProvider } from "@/context/cart-context";
 import { AuthModalProvider } from "@/context/modal-context";
@@ -216,7 +215,7 @@ export default function RootLayout({
             </GeoLocationProvider>
           </CartProvider>
         </AuthModalProvider>
-        <Footer />
+
       </NotificationProvider>
     </>
   );

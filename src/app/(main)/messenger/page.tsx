@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { userApi } from '@/api/user';
 import { useAuth } from '@/context/auth-context';
 import { Conversation, Message, ConversationType, SendMessageDto } from '@/interface';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { useSubscription } from '@apollo/client';
-import { MESSAGE_SENT_SUBSCRIPTION, CONVERSATION_CREATED_SUBSCRIPTION, MESSAGES_READ_SUBSCRIPTION } from '@/lib/graphql/subcriptions/messengerSubscriptions';
+import { MESSAGE_SENT_SUBSCRIPTION, MESSAGES_READ_SUBSCRIPTION } from '@/lib/graphql/subcriptions/messengerSubscriptions';
 
 const MessengerPage = () => {
   const { user, token } = useAuth();
@@ -19,59 +19,68 @@ const MessengerPage = () => {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // Subscription for new messages in selected conversation
-  const { data: newMessageData } = useSubscription(MESSAGE_SENT_SUBSCRIPTION, {
+  // Subscription for new messages with better debugging
+  const { data: newMessageData, loading: subscriptionLoading, error: subscriptionError } = useSubscription(MESSAGE_SENT_SUBSCRIPTION, {
     variables: { conversationId: selectedConversation?.id || '' },
-    skip: !selectedConversation?.id,
-    onSubscriptionData: ({ subscriptionData }) => {
-      if (subscriptionData.data?.messageSent) {
-        const newMessage = subscriptionData.data.messageSent;
-        setMessages(prev => {
-          // Check if message already exists to avoid duplicates
-          const messageExists = prev.some(msg => msg.id === newMessage.id);
-          if (messageExists) return prev;
-          return [...prev, newMessage];
-        });
+    skip: !selectedConversation?.id || !token,
+    onError: (error) => {
+      console.error('Message subscription error:', error);
+      setConnectionError('Failed to connect to real-time messaging');
+    },
+    onData: ({ data }) => {
+      console.log('🔔 New message subscription data received:', data);
+      if (data?.data?.messageSent) {
+        const newMsg = data.data.messageSent;
+        console.log('📩 Processing new message:', newMsg);
         
-        // Update conversation's last message
+        // Enable auto-scroll for new incoming messages
+        setShouldAutoScroll(true);
+        
+        // Only add if it's for the current conversation
+        if (newMsg.conversation.id === selectedConversation?.id) {
+          setMessages(prev => {
+            const exists = prev.some(msg => msg.id === newMsg.id);
+            if (exists) {
+              console.log('📝 Message already exists, skipping');
+              return prev;
+            }
+            console.log('✅ Adding new message to UI');
+            return [...prev, newMsg];
+          });
+        }
+        
+        // Update conversation last message
         setConversations(prev => prev.map(conv => 
-          conv.id === newMessage.conversation.id 
-            ? { ...conv, lastMessage: newMessage.content, lastMessageAt: new Date(newMessage.createdAt) }
+          conv.id === newMsg.conversation.id 
+            ? { 
+                ...conv, 
+                lastMessage: newMsg.content, 
+                lastMessageAt: new Date(newMsg.createdAt) 
+              }
             : conv
         ));
       }
-    }
-  });
-
-  // Subscription for new conversations
-  const { data: newConversationData } = useSubscription(CONVERSATION_CREATED_SUBSCRIPTION, {
-    onSubscriptionData: ({ subscriptionData }) => {
-      if (subscriptionData.data?.conversationCreated) {
-        const newConversation = subscriptionData.data.conversationCreated;
-        const shouldShow = activeTab === 'shop' 
-          ? newConversation.conversationType === ConversationType.CUSTOMER_SHOP
-          : newConversation.conversationType === ConversationType.CUSTOMER_SHIPPER;
-          
-        if (shouldShow) {
-          setConversations(prev => {
-            const conversationExists = prev.some(conv => conv.id === newConversation.id);
-            if (conversationExists) return prev;
-            return [newConversation, ...prev];
-          });
-        }
-      }
-    }
+    },
+    onComplete: () => {
+      console.log('🔗 Subscription completed');
+    },
   });
 
   // Subscription for read receipts
   const { data: messagesReadData } = useSubscription(MESSAGES_READ_SUBSCRIPTION, {
     variables: { conversationId: selectedConversation?.id || '' },
-    skip: !selectedConversation?.id,
-    onSubscriptionData: ({ subscriptionData }) => {
-      if (subscriptionData.data?.messagesRead) {
-        // Update message read status
+    skip: !selectedConversation?.id || !token,
+    onError: (error) => {
+      console.error('Read receipts subscription error:', error);
+    },
+    onData: ({ data }) => {
+      console.log('📖 Read receipt received:', data);
+      if (data?.data?.messagesRead) {
         setMessages(prev => prev.map(msg => 
           msg.sender.id === user?.id ? { ...msg, isRead: true, readAt: new Date() } : msg
         ));
@@ -79,24 +88,23 @@ const MessengerPage = () => {
     }
   });
 
+  // Debug subscription status
   useEffect(() => {
-    if (token) {
-      loadConversations();
-    }
-  }, [token, activeTab]);
+    console.log('🔍 Subscription status:', {
+      selectedConversationId: selectedConversation?.id,
+      hasToken: !!token,
+      subscriptionLoading,
+      subscriptionError,
+      connectionError
+    });
+  }, [selectedConversation?.id, token, subscriptionLoading, subscriptionError, connectionError]);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
+    if (!token) return;
+    
     try {
       setLoading(true);
-      const response = await userApi.messenger.getUserConversations(token!);
+      const response = await userApi.messenger.getUserConversations(token);
       const filteredConversations = response.items.filter(conv => {
         if (activeTab === 'shop') {
           return conv.conversationType === ConversationType.CUSTOMER_SHOP;
@@ -110,40 +118,38 @@ const MessengerPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, activeTab]);
 
-  const loadMessages = async (conversationId: string) => {
+  const loadMessages = useCallback(async (conversationId: string) => {
+    if (!token) return;
+    
     try {
-      const response = await userApi.messenger.getConversationMessages(token!, conversationId);
+      console.log('📥 Loading messages for conversation:', conversationId);
+      // remove auto‐scroll toggle here so selecting doesn't jump
+      const response = await userApi.messenger.getConversationMessages(token, conversationId);
+      console.log('📥 Loaded messages:', response.items);
       setMessages(response.items);
-      // Mark messages as read
-      await userApi.messenger.markMessagesAsRead(token!, conversationId);
+      await userApi.messenger.markMessagesAsRead(token, conversationId);
     } catch (error) {
       console.error('Error loading messages:', error);
     }
-  };
+  }, [token]);
 
-  const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation || sendingMessage) return;
+  const sendMessage = useCallback(async () => {
+    if (!newMessage.trim() || !selectedConversation || sendingMessage || !token || !user) return;
 
+    const messageContent = newMessage.trim();
+    const tempId = `temp_${Date.now()}`;
+    
     try {
       setSendingMessage(true);
-      const messageData: SendMessageDto = {
-        conversationId: selectedConversation.id,
-        content: newMessage.trim(),
-        messageType: 'text'
-      };
-
-       await userApi.messenger.sendMessage(token!, messageData);
-      // Don't add to messages here - let the subscription handle it
-      setNewMessage('');
-    } catch (error) {
-      console.error('Error sending message:', error);
-      // If sending fails, we can add it locally as a fallback
+      setShouldAutoScroll(true); // Enable auto-scroll for new messages
+      
+      // Add optimistic message immediately
       const tempMessage: Message = {
-        id: Date.now().toString(),
-        content: newMessage.trim(),
-        sender: user!,
+        id: tempId,
+        content: messageContent,
+        sender: user,
         conversation: selectedConversation,
         messageType: 'text',
         isRead: false,
@@ -152,32 +158,88 @@ const MessengerPage = () => {
         createdAt: new Date(),
         updatedAt: new Date()
       };
+      
+      console.log('🚀 Adding optimistic message:', tempMessage);
       setMessages(prev => [...prev, tempMessage]);
       setNewMessage('');
+
+      // Send to backend
+      const messageData: SendMessageDto = {
+        conversationId: selectedConversation.id,
+        content: messageContent,
+        messageType: 'text'
+      };
+
+      console.log('📤 Sending message to backend...');
+      const sentMessage = await userApi.messenger.sendMessage(token, messageData);
+      console.log('✅ Message sent successfully:', sentMessage);
+      
+      // Replace temp message with real message
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === tempId ? sentMessage : msg
+        )
+      );
+
+    } catch (error) {
+      console.error('❌ Error sending message:', error);
+      // Remove temp message on error
+      setMessages(prev => prev.filter(msg => msg.id !== tempId));
+      setNewMessage(messageContent); // Restore message text
     } finally {
       setSendingMessage(false);
     }
-  };
+  }, [newMessage, selectedConversation, sendingMessage, token, user]);
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  // Clear connection error when token changes
+  useEffect(() => {
+    if (token) {
+      setConnectionError(null);
+    }
+  }, [token]);
+
+  // Load conversations when component mounts or tab changes
+  useEffect(() => {
+    loadConversations();
+  }, [loadConversations]);
+
+  // Modified auto‐scroll effect – only for new/your messages
+  useEffect(() => {
+    if (shouldAutoScroll && chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  }, [messages, shouldAutoScroll]);
+
+  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
-  };
+  }, [sendMessage]);
 
-  const getOtherParticipant = (conversation: Conversation) => {
+  const getOtherParticipant = useCallback((conversation: Conversation) => {
     return conversation.participant1.id === user?.id 
       ? conversation.participant2 
       : conversation.participant1;
-  };
+  }, [user?.id]);
 
-  const formatTime = (date: Date | string) => {
+  const formatTime = useCallback((date: Date | string) => {
     return formatDistanceToNow(new Date(date), { 
       addSuffix: true, 
       locale: vi 
     });
-  };
+  }, []);
+
+  const handleConversationSelect = useCallback((conversation: Conversation) => {
+    console.log('🔄 Selecting conversation:', conversation.id);
+    // ensure auto‐scroll remains off on select
+    setShouldAutoScroll(false);
+    setSelectedConversation(conversation);
+    loadMessages(conversation.id);
+  }, [loadMessages]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -186,11 +248,58 @@ const MessengerPage = () => {
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Tin nhắn</h1>
           <p className="text-gray-600 mt-2">Trò chuyện với cửa hàng và shipper</p>
+          
+          {/* Connection Status */}
+          <div className="mt-2 flex items-center space-x-4 text-sm">
+            <div className={`flex items-center space-x-1 ${
+              subscriptionLoading ? 'text-yellow-600' : 
+              subscriptionError ? 'text-red-600' : 'text-green-600'
+            }`}>
+              <div className={`w-2 h-2 rounded-full ${
+                subscriptionLoading ? 'bg-yellow-400' : 
+                subscriptionError ? 'bg-red-400' : 'bg-green-400'
+              }`}></div>
+              <span>
+                {subscriptionLoading ? 'Connecting...' : 
+                 subscriptionError ? 'Disconnected' : 'Connected'}
+              </span>
+            </div>
+            {selectedConversation && (
+              <span className="text-gray-500">
+                Conversation: {selectedConversation.id.slice(0, 8)}...
+              </span>
+            )}
+          </div>
+          
+          {/* Connection Error Alert */}
+          {connectionError && (
+            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex">
+                <svg className="w-5 h-5 text-yellow-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <div>
+                  <p className="text-sm text-yellow-800">
+                    {connectionError}. Tin nhắn mới có thể không hiển thị ngay lập tức.
+                  </p>
+                  <button 
+                    onClick={() => {
+                      setConnectionError(null);
+                      window.location.reload();
+                    }} 
+                    className="text-sm text-yellow-800 underline hover:text-yellow-900"
+                  >
+                    Làm mới trang
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden h-[calc(100vh-200px)]">
           <div className="flex h-full">
-            {/* Sidebar */}
+            {/* Sidebar - Conversations List */}
             <div className="w-1/3 border-r border-gray-200 flex flex-col">
               {/* Tabs */}
               <div className="border-b border-gray-200">
@@ -260,10 +369,7 @@ const MessengerPage = () => {
                     return (
                       <div
                         key={conversation.id}
-                        onClick={() => {
-                          setSelectedConversation(conversation);
-                          loadMessages(conversation.id);
-                        }}
+                        onClick={() => handleConversationSelect(conversation)}
                         className={`p-4 cursor-pointer hover:bg-gray-50 border-b border-gray-100 transition-colors ${
                           selectedConversation?.id === conversation.id ? 'bg-orange-50 border-orange-200' : ''
                         }`}
@@ -274,6 +380,10 @@ const MessengerPage = () => {
                               src={otherParticipant.avatar || '/default-avatar.png'}
                               alt={otherParticipant.name}
                               className="w-12 h-12 rounded-full object-cover"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = '/default-avatar.png';
+                              }}
                             />
                             <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-white rounded-full"></div>
                           </div>
@@ -311,6 +421,10 @@ const MessengerPage = () => {
                         src={getOtherParticipant(selectedConversation).avatar || '/default-avatar.png'}
                         alt={getOtherParticipant(selectedConversation).name}
                         className="w-10 h-10 rounded-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = '/default-avatar.png';
+                        }}
                       />
                       <div>
                         <h3 className="text-lg font-medium text-gray-900">
@@ -324,7 +438,10 @@ const MessengerPage = () => {
                   </div>
 
                   {/* Messages */}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+                  <div
+                    ref={chatContainerRef}
+                    className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50"
+                  >
                     {messages.map((message) => {
                       const isOwn = message.sender.id === user?.id;
                       return (
@@ -347,6 +464,9 @@ const MessengerPage = () => {
                               {isOwn && (
                                 <div className="flex items-center space-x-1">
                                   {message.isRead && <span className="text-xs">✓✓</span>}
+                                  {message.id.startsWith('temp_') && (
+                                    <span className="text-xs opacity-60">⏳</span>
+                                  )}
                                 </div>
                               )}
                             </div>
