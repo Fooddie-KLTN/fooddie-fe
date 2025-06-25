@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { BackendUser } from "@/api/auth";
 import { FOOD_STATUS } from "@/lib/utils";
 
 export enum RestaurantStatus {
@@ -271,4 +273,67 @@ export function getFoodStatus(food: FoodPreview): FoodStatus {
     return food.status;
   }
   return FOOD_STATUS.PENDING; // Default fallback
+}
+
+export enum ConversationType {
+  CUSTOMER_SHOP = 'customer_shop',
+  CUSTOMER_SHIPPER = 'customer_shipper',
+  SUPPORT = 'support'
+}
+
+export interface Message {
+  id: string;
+  conversation: Conversation | string;
+  sender: BackendUser | UserProfile;
+  content: string;
+  messageType?: string; // 'text', 'image', 'file', 'location', 'order_update'
+  attachmentUrl?: string;
+  attachmentType?: string;
+  isRead: boolean;
+  readAt?: Date;
+  isEdited: boolean;
+  editedAt?: Date;
+  isDeleted: boolean;
+  deletedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  metadata?: any; // For storing additional data like order info, location coordinates, etc.
+  replyToMessageId?: string; // For reply functionality
+}
+
+export interface Conversation {
+  id: string;
+  participant1: UserProfile;
+  participant2: UserProfile;
+  lastMessage?: string;
+  lastMessageAt?: Date;
+  isBlocked: boolean;
+  blockedBy?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  messages?: Message[];
+  conversationType: ConversationType;
+  orderId?: string; // Required for customer-shipper conversations
+  restaurantId?: string; // Required for customer-shop conversations
+}
+
+/**
+ * DTO interfaces for messenger
+ */
+export interface CreateConversationDto {
+  participantId?: string; //  shipper ID if type is CUSTOMER_SHIPPER
+  orderId?: string; // Required for shipper conversations
+  restaurantId?: string; // Required for shop conversations
+  conversationType?: ConversationType;
+}
+
+export interface SendMessageDto {
+  conversationId: string;
+  content: string;
+  messageType?: string;
+  attachmentUrl?: string;
+  attachmentType?: string;
+  replyToMessageId?: string;
+  metadata?: any;
 }

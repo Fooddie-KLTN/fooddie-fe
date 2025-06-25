@@ -21,10 +21,13 @@ import {
 } from "@/components/ui/breadcrumb";
 import { usePathname } from "next/navigation";
 import { HomeIcon, ChevronRightIcon } from "lucide-react";
+import { ApolloProvider } from '@apollo/client';
+import { apolloClient } from '@/lib/graphql/apolloClient';
 
 // Enhanced path mapping for breadcrumbs with more detailed routes
 const pathMap: Record<string, { label: string; parent?: string; icon?: React.ReactNode }> = {
   "/": { label: "Trang chủ", icon: <HomeIcon className="w-4 h-4" /> },
+  "/messenger": { label: "Trò chuyện", parent: "/" },
   "/search": { label: "Tìm kiếm món ăn", parent: "/" },
   "/food": { label: "Món ăn", parent: "/" },
   "/food/[id]": { label: "Chi tiết món ăn", parent: "/food" },
@@ -205,7 +208,9 @@ export default function RootLayout({
                 </div>
               )}
               <main className="min-h-screen">
+                <ApolloProvider client={apolloClient}>
                 {children}
+                </ApolloProvider>
               </main>
               <ChatWidget />
             </GeoLocationProvider>
