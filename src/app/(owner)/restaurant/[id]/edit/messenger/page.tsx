@@ -34,23 +34,27 @@ const RestaurantMessengerPage = () => {
   // Subscription for new messages in selected conversation
   const { data: newMessageData, error: messageError } = useSubscription(MESSAGE_SENT_SUBSCRIPTION, {
     variables: { conversationId: selectedConversation?.id || '' },
-    skip: !selectedConversation?.id || !getToken(),
+    skip: !selectedConversation?.id,
     onError: (error) => {
       console.error('Message subscription error:', error);
       setConnectionError('Failed to connect to real-time messaging');
     },
     onData: ({ data }) => {
-      console.log('New message received:', data.data);
+      console.log('📨 New message received:', data.data);
       if (data.data?.messageSent) {
         const newMsg = data.data.messageSent;
-
-        // enable auto‐scroll for real‐time arrivals
+        
+        // Enable auto-scroll for new messages
         setShouldAutoScroll(true);
-
+        
+        // Add message to current conversation messages
         setMessages(prev => {
           const exists = prev.some(msg => msg.id === newMsg.id);
-          if (exists) return prev;
-          console.log('Adding new message to UI:', newMsg);
+          if (exists) {
+            console.log('🔄 Message already exists, skipping');
+            return prev;
+          }
+          console.log('✅ Adding new message to UI:', newMsg);
           return [...prev, newMsg];
         });
         
@@ -71,11 +75,12 @@ const RestaurantMessengerPage = () => {
   // Subscription for read receipts
   const { data: messagesReadData, error: readError } = useSubscription(MESSAGES_READ_SUBSCRIPTION, {
     variables: { conversationId: selectedConversation?.id || '' },
-    skip: !selectedConversation?.id || !getToken(),
+    skip: !selectedConversation?.id,
     onError: (error) => {
       console.error('Read receipts subscription error:', error);
     },
     onData: ({ data }) => {
+      console.log('📖 Read receipt received:', data);
       if (data.data?.messagesRead) {
         setMessages(prev => prev.map(msg => 
           msg.sender.id === user?.id ? { ...msg, isRead: true, readAt: new Date() } : msg
@@ -127,6 +132,7 @@ const RestaurantMessengerPage = () => {
 
     try {
       setSendingMessage(true);
+      setShouldAutoScroll(true); // Enable auto-scroll for new messages
       const token = await getToken();
       if (!token) return;
 
@@ -144,7 +150,7 @@ const RestaurantMessengerPage = () => {
         updatedAt: new Date()
       };
       
-      console.log('Adding optimistic message:', tempMessage);
+      console.log('🚀 Adding optimistic message:', tempMessage);
       setMessages(prev => [...prev, tempMessage]);
       setNewMessage('');
 
@@ -155,7 +161,7 @@ const RestaurantMessengerPage = () => {
       };
 
       const sentMessage = await userApi.messenger.sendMessage(token, messageData);
-      console.log('Message sent successfully:', sentMessage);
+      console.log('✅ Message sent successfully:', sentMessage);
       
       // Replace temp message with real message
       setMessages(prev => 
@@ -165,13 +171,13 @@ const RestaurantMessengerPage = () => {
       );
 
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('❌ Error sending message:', error);
       // Remove temp message on error
       setMessages(prev => prev.filter(msg => msg.id !== tempId));
       setNewMessage(messageContent); // Restore message text
     } finally {
       setSendingMessage(false);
-      setShouldAutoScroll(true);
+      // ✅ REMOVE the duplicate shouldAutoScroll trigger
     }
   }, [newMessage, selectedConversation, sendingMessage, user, getToken]);
 

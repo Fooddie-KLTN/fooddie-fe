@@ -24,63 +24,80 @@ const MessengerPage = () => {
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // Subscription for new messages with better debugging
-  const { data: newMessageData, loading: subscriptionLoading, error: subscriptionError } = useSubscription(MESSAGE_SENT_SUBSCRIPTION, {
-    variables: { conversationId: selectedConversation?.id || '' },
-    skip: !selectedConversation?.id || !token,
-    onError: (error) => {
-      console.error('Message subscription error:', error);
-      setConnectionError('Failed to connect to real-time messaging');
-    },
-    onData: ({ data }) => {
-      console.log('🔔 New message subscription data received:', data);
-      if (data?.data?.messageSent) {
-        const newMsg = data.data.messageSent;
-        console.log('📩 Processing new message:', newMsg);
-        
-        // Enable auto-scroll for new incoming messages
-        setShouldAutoScroll(true);
-        
-        // Only add if it's for the current conversation
-        if (newMsg.conversation.id === selectedConversation?.id) {
+  // Subscription for new messages with better debugging - modified to match restaurant version
+  const { data: newMessageData, loading: subscriptionLoading, error: subscriptionError } = useSubscription(
+    MESSAGE_SENT_SUBSCRIPTION,
+    {
+      variables: { conversationId: selectedConversation?.id || '' },
+      skip: !selectedConversation?.id,
+      onError: (err) => {
+        console.error('💥 Subscription error:', err);
+        setConnectionError('Failed to connect to real-time messaging');
+      },
+      onData: ({ data }) => {
+        console.log('📨 New message received:', data.data);
+        if (data.data?.messageSent) {
+          const newMsg = data.data.messageSent;
+          
+          // Enable auto-scroll for new incoming messages
+          setShouldAutoScroll(true);
+          
+          // Add message to current conversation messages with proper deduplication
           setMessages(prev => {
+            // Check if message already exists by ID to prevent duplicates
             const exists = prev.some(msg => msg.id === newMsg.id);
             if (exists) {
-              console.log('📝 Message already exists, skipping');
+              console.log('🔄 Message already exists, skipping:', newMsg.id);
               return prev;
             }
-            console.log('✅ Adding new message to UI');
+            
+            // Also check for temporary messages that may need replacement
+            const hasTempVersion = prev.some(msg => 
+              msg.id.startsWith('temp_') && 
+              msg.content === newMsg.content && 
+              msg.sender.id === newMsg.sender.id
+            );
+            
+            if (hasTempVersion) {
+              console.log('🔄 Replacing temp message with real message:', newMsg.id);
+              return prev.map(msg => 
+                (msg.id.startsWith('temp_') && 
+                 msg.content === newMsg.content && 
+                 msg.sender.id === newMsg.sender.id) 
+                  ? newMsg 
+                  : msg
+              );
+            }
+            
+            console.log('✅ Adding new message to UI:', newMsg.id);
             return [...prev, newMsg];
           });
+          
+          // Update conversation last message
+          setConversations(prev => prev.map(conv => 
+            conv.id === newMsg.conversation.id 
+              ? { 
+                  ...conv, 
+                  lastMessage: newMsg.content, 
+                  lastMessageAt: new Date(newMsg.createdAt) 
+                }
+              : conv
+          ));
         }
-        
-        // Update conversation last message
-        setConversations(prev => prev.map(conv => 
-          conv.id === newMsg.conversation.id 
-            ? { 
-                ...conv, 
-                lastMessage: newMsg.content, 
-                lastMessageAt: new Date(newMsg.createdAt) 
-              }
-            : conv
-        ));
-      }
-    },
-    onComplete: () => {
-      console.log('🔗 Subscription completed');
-    },
-  });
+      },
+    }
+  );
 
-  // Subscription for read receipts
+  // Subscription for read receipts - also updated to match restaurant version
   const { data: messagesReadData } = useSubscription(MESSAGES_READ_SUBSCRIPTION, {
     variables: { conversationId: selectedConversation?.id || '' },
-    skip: !selectedConversation?.id || !token,
+    skip: !selectedConversation?.id,
     onError: (error) => {
       console.error('Read receipts subscription error:', error);
     },
     onData: ({ data }) => {
       console.log('📖 Read receipt received:', data);
-      if (data?.data?.messagesRead) {
+      if (data.data?.messagesRead) {
         setMessages(prev => prev.map(msg => 
           msg.sender.id === user?.id ? { ...msg, isRead: true, readAt: new Date() } : msg
         ));
@@ -125,10 +142,17 @@ const MessengerPage = () => {
     
     try {
       console.log('📥 Loading messages for conversation:', conversationId);
-      // remove auto‐scroll toggle here so selecting doesn't jump
+      // Clear existing messages first to avoid any potential duplicates
+      setMessages([]);
       const response = await userApi.messenger.getConversationMessages(token, conversationId);
       console.log('📥 Loaded messages:', response.items);
-      setMessages(response.items);
+      
+      // Ensure we have unique message IDs
+      const uniqueMessages = Array.from(
+        new Map(response.items.map(item => [item.id, item])).values()
+      );
+      
+      setMessages(uniqueMessages);
       await userApi.messenger.markMessagesAsRead(token, conversationId);
     } catch (error) {
       console.error('Error loading messages:', error);
@@ -203,7 +227,7 @@ const MessengerPage = () => {
     loadConversations();
   }, [loadConversations]);
 
-  // Modified auto‐scroll effect – only for new/your messages
+  // Modified auto-scroll effect – only scroll when shouldAutoScroll is true
   useEffect(() => {
     if (shouldAutoScroll && chatContainerRef.current) {
       chatContainerRef.current.scrollTo({
@@ -235,7 +259,7 @@ const MessengerPage = () => {
 
   const handleConversationSelect = useCallback((conversation: Conversation) => {
     console.log('🔄 Selecting conversation:', conversation.id);
-    // ensure auto‐scroll remains off on select
+    // Ensure auto-scroll remains off on select
     setShouldAutoScroll(false);
     setSelectedConversation(conversation);
     loadMessages(conversation.id);
@@ -252,11 +276,11 @@ const MessengerPage = () => {
           {/* Connection Status */}
           <div className="mt-2 flex items-center space-x-4 text-sm">
             <div className={`flex items-center space-x-1 ${
-              subscriptionLoading ? 'text-yellow-600' : 
-              subscriptionError ? 'text-red-600' : 'text-green-600'
-            }`}>
+                  subscriptionLoading ? 'text-yellow-600' : 
+                  subscriptionError ? 'text-red-600' : 'text-green-600'
+                }`}>
               <div className={`w-2 h-2 rounded-full ${
-                subscriptionLoading ? 'bg-yellow-400' : 
+                loading ? 'bg-yellow-400' : 
                 subscriptionError ? 'bg-red-400' : 'bg-green-400'
               }`}></div>
               <span>

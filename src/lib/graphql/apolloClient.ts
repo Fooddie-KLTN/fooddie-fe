@@ -7,18 +7,13 @@ import { getMainDefinition } from '@apollo/client/utilities';
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
 const backendUrl = process.env.NEXT_PUBLIC_API_URL_DOMAIN_BE;
 
-// Improved token function with better error handling
-function getToken() {
+// Function to get token from localStorage
+const getToken = () => {
   if (typeof window !== 'undefined') {
-    try {
-      return localStorage.getItem('authToken');
-    } catch (error) {
-      console.warn('Failed to get token from localStorage:', error);
-      return null;
-    }
+    return localStorage.getItem('authToken');
   }
   return null;
-}
+};
 
 // HTTP Link with dynamic headers function
 const httpLink = new HttpLink({
@@ -31,39 +26,19 @@ const httpLink = new HttpLink({
   })(),
 });
 
-// WebSocket Link with better error handling and dynamic token
+// WebSocket link with token
 const wsLink = typeof window !== 'undefined'
   ? new GraphQLWsLink(createClient({
-    url: `ws://${backendUrl}/graphql`,
-    connectionParams: () => {
-      const token = getToken();
-      if (!token) {
-        console.warn('No token found for WebSocket connection');
+      url: `ws://${backendUrl}/graphql`,
+      connectionParams: () => {
+        const token = getToken();
+        return token ? { authorization: `Bearer ${token}` } : {};
+      },
+      on: {
+        connected: () => console.log('📶 WebSocket connected successfully'),
+        error: (err) => console.error('📶 WebSocket error:', err),
       }
-      return token
-        ? {
-            authorization: `Bearer ${token}`,
-          }
-        : {};
-    },
-    on: {
-      error: (error) => {
-        console.error('WebSocket error:', error);
-      },
-      closed: (event) => {
-        console.log('WebSocket closed:', event);
-      },
-      connected: () => {
-        console.log('WebSocket connected');
-      },
-      connecting: () => {
-        console.log('WebSocket connecting...');
-      },
-    },
-    retryAttempts: 5,
-    shouldRetry: () => true,
-    lazy: true, // Set to true to avoid immediate connection
-  }))
+    }))
   : null;
 
 const splitLink = typeof window !== 'undefined' && wsLink
