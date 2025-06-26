@@ -8,6 +8,13 @@ import { userApi } from "@/api/user";
 import { useAuth } from "@/context/auth-context";
 import LineChart from "@/components/ui/chart/line-chart";
 import BarChart from "@/components/ui/chart/bar-chart";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface TopFood {
   id: string;
@@ -108,18 +115,18 @@ export default function StatisticsPage() {
     <div className="max-w-4xl mx-auto py-10 px-4">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold">Thống kê nhà hàng</h1>
-        <select
-          title="Chọn tháng"
-          className="border rounded px-3 py-2"
-          value={selectedMonth}
-          onChange={e => setSelectedMonth(e.target.value)}
-        >
-          {getMonthOptions().map((m) => (
-            <option key={m} value={m}>
-              {`Tháng ${Number(m.slice(5))} - ${m.slice(0, 4)}`}
-            </option>
-          ))}
-        </select>
+        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+          <SelectTrigger className="w-[180px]" aria-label="Chọn tháng">
+            <SelectValue placeholder="Chọn tháng" />
+          </SelectTrigger>
+          <SelectContent>
+            {getMonthOptions().map((m) => (
+              <SelectItem key={m} value={m}>
+                {`Tháng ${Number(m.slice(5))} - ${m.slice(0, 4)}`}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
         <Card className="flex flex-col items-center p-6">

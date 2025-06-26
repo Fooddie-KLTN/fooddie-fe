@@ -143,7 +143,7 @@ export default function EditRestaurantLayout({
                 </main>
 
                 {/* Notification Popup */}
-                <NotificationPopup />
+                <NotificationPopup  />
             </div>
         </OwnerNotificationProvider>
     );

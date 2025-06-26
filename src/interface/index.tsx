@@ -347,3 +347,16 @@ export interface Notification {
   isRead?: boolean | null;
   type?: string | null;
 }
+
+export type OwnerNotification =
+  | ({
+      type: "order";
+      total: number;
+      user?: { name: string };
+      orderDetails?: { length: number };
+    } & { id: string; createdAt: string })
+  | ({
+      type: "message";
+      content: string;
+      sender: string;
+    } & { id: string; createdAt: string });
