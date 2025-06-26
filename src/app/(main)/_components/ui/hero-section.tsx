@@ -1,10 +1,12 @@
 "use client";
 
-import { SearchIcon } from "lucide-react";
+import { CameraIcon, SearchIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { FoodPreview } from "@/interface";
 import { useRouter } from "next/navigation";
+import React, { useState } from "react";
+import ImageSearchModal from "../image-search";
 
 interface HeroSectionProps {
   searchQuery: string;
@@ -15,6 +17,7 @@ interface HeroSectionProps {
 
 export default function HeroSection({ searchQuery, setSearchQuery, onSearch, suggestFoods }: HeroSectionProps) {
   const router = useRouter();
+  const [openImageModal, setOpenImageModal] = useState(false);
 
   const handleSuggestionClick = (food: FoodPreview) => {
     setSearchQuery(food.name);
@@ -51,21 +54,36 @@ export default function HeroSection({ searchQuery, setSearchQuery, onSearch, sug
           
           <div className="relative">
             <form
-              className="flex items-center rounded-md bg-white p-2 shadow-lg"
+              className="flex items-center rounded-md bg-white p-2 shadow-lg gap-2"
               onSubmit={e => {
                 e.preventDefault();
                 onSearch();
               }}
             >
               <SearchIcon className="h-5 w-5 ml-2 text-gray-400" />
-              <input 
-                className="w-full p-2 outline-none text-gray-700"
-                type="text" 
-                placeholder="Tìm món ăn hoặc nhà hàng..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <Button className="bg-primary hover:bg-primary/90 hover:text-primary" type="submit">
+              <div className="relative flex-1">
+                <input
+                  className="w-full p-2 pr-10 outline-none text-gray-700 rounded-md"
+                  type="text"
+                  placeholder="Tìm món ăn hoặc nhà hàng..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {/* Camera icon inside input, right-aligned */}
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-orange-100 transition-colors"
+                  title="Tìm kiếm bằng hình ảnh"
+                  onClick={() => setOpenImageModal(true)}
+                  tabIndex={0}
+                >
+                  <CameraIcon className="h-5 w-5 text-orange-500" />
+                </button>
+              </div>
+              <Button
+                type="submit"
+                className="bg-primary hover:bg-primary/90 hover:text-primary ml-2"
+              >
                 Tìm kiếm
               </Button>
             </form>
@@ -181,6 +199,10 @@ export default function HeroSection({ searchQuery, setSearchQuery, onSearch, sug
               </div>
             )}
           </div>
+
+
+          {/* Image search modal */}
+          <ImageSearchModal open={openImageModal} onClose={() => setOpenImageModal(false)} />
         </div>
       </div>
     </div>
