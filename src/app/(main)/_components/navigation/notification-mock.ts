@@ -6,7 +6,7 @@
  * with real data from an API.
  */
 
-import { Notification } from "@/components/ui/navigation/types";
+import { Notification } from "@/app/(main)/_components/navigation/types";
 
 /**
  * Sample notification data

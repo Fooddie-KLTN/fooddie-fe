@@ -11,7 +11,7 @@ import {
   NavigationItemsProps,
   NavItem,
   SubNavItem,
-} from "@/components/ui/navigation/types";
+} from "@/app/(main)/_components/navigation/types";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef } from "react";

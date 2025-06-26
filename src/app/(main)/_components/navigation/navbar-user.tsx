@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { authService } from "@/api/auth";
@@ -16,8 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { notificationMock } from "@/components/ui/navigation/notification-mock";
-import { UserActionsProps } from "@/components/ui/navigation/types";
+import { UserActionsProps } from "@/app/(main)/_components/navigation/types";
 import { useAuth } from "@/context/auth-context";
 import { useCart } from "@/context/cart-context";
 import {
@@ -31,12 +31,122 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSubscription, useQuery, gql } from "@apollo/client";
+import { NOTIFICATION_ADDED_SUBSCRIPTION } from "@/lib/graphql/subcriptions/notificationSubscriptions";
+import { useEffect, useRef, useState } from "react";
+import type { Notification } from "@/interface"; // adjust path as needed
+import { apiRequest } from "@/api/base-api"; // adjust path if needed
+
+// Notification type
+type NotificationItem = {
+  id: string;
+  title: string;
+  time: string;
+  type?: string | null;
+  isRead?: boolean | null;
+};
+
+const GET_USER_NOTIFICATIONS = gql`
+  query GetUserNotifications {
+    getUserNotifications {
+      id
+      content
+      description
+      createdAt
+      isRead
+      type
+      receiveUser
+    }
+  }
+`;
 
 export default function UserActions({ openModal }: UserActionsProps) {
   const router = useRouter();
   // Get cart context
   const { getToken, logout, user} = useAuth();
   const { cartItems } = useCart(); // Change 'cart' to 'cartItems'
+
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const { data: notificationData } = useSubscription<{ notificationAdded: Notification }>(
+    NOTIFICATION_ADDED_SUBSCRIPTION,
+    {
+      skip: !user?.id,
+      onData: ({ data }) => {
+        const notif = data.data?.notificationAdded;
+        if (notif) {
+          setNotifications(prev => [
+            {
+              id: notif.id,
+              title: notif.content || notif.description || "Có thông báo mới",
+              time: new Date(notif.createdAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
+              type: notif.type,
+              isRead: notif.isRead,
+            },
+            ...prev,
+          ]);
+          // Play sound
+          if (audioRef.current) {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play();
+          }
+        }
+      },
+    }
+  );
+
+const { data: notifQueryData } = useQuery<{ getUserNotifications: Notification[] }>(
+  GET_USER_NOTIFICATIONS,
+  {
+    skip: !user?.id,
+  }
+);
+  useEffect(() => {
+    if (notifQueryData?.getUserNotifications) {
+      setNotifications(
+        notifQueryData.getUserNotifications.map((notif) => ({
+          id: notif.id,
+          title: notif.content || notif.description || "Có thông báo mới",
+          time: new Date(notif.createdAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
+          type: notif.type,
+          isRead: notif.isRead,
+        }))
+      );
+    }
+  }, [notifQueryData]);
+
+  useEffect(() => {
+    let ignore = false;
+    async function fetchNotifications() {
+      if (!user) return;
+      const token = await getToken();
+      if (!token) return;
+      try {
+        const data = await apiRequest<Notification[]>(
+          "/notifications",
+          "GET",
+          { token: token },
+        );
+        if (!ignore) {
+          setNotifications(
+            data.map((notif) => ({
+              id: notif.id,
+              title: notif.content || notif.description || "Có thông báo mới",
+              time: new Date(notif.createdAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
+              type: notif.type,
+              isRead: notif.isRead,
+            }))
+          );
+        }
+      } catch (err) {
+        // Optionally handle error
+        console.error("Failed to fetch notifications:", err);
+      }
+    }
+    fetchNotifications();
+    return () => { ignore = true; };
+  }, [user, getToken]);
 
 
 
@@ -118,37 +228,38 @@ return (
                   <span className="absolute right-1.5 top-0.5 flex justify-center h-3 w-3 rounded-full bg-primary"></span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-80 max-h-96 overflow-y-auto">
+              <DropdownMenuContent className="w-80 max-h-96 overflow-y-auto mr-10">
                 <DropdownMenuLabel>Thông báo</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {notificationMock.map((item, idx) => (
-                  <div key={`notification-${idx}`}>
-                    <DropdownMenuItem className="p-3 cursor-pointer">
-                      <div className="flex gap-2 items-center">
-                        <Avatar>
-                          <AvatarImage src={item.avatar} alt="Avatar" />
-                          <AvatarFallback>TE</AvatarFallback>
-                        </Avatar>
-                        <div className="px-2">
-                          <p className="line-clamp-2 text-md font-medium">
-                            {item.title}
-                          </p>
-                          <span className="text-gray-500 text-sm">
-                            {item.time}
-                          </span>
-                        </div>
-                      </div>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </div>
-                ))}
+                {notifications.length > 0
+  ? notifications.map((item, idx) => (
+      <div key={item.id}>
+        <DropdownMenuItem className="p-3 cursor-pointer">
+          <div className="flex gap-2 items-center">
+            <Avatar>
+              <AvatarImage src="/default-avatar.png" alt="Avatar" />
+              <AvatarFallback>NT</AvatarFallback>
+            </Avatar>
+            <div className="px-2">
+              <p className="line-clamp-2 text-md font-medium">
+                {item.title}
+              </p>
+              <span className="text-gray-500 text-sm">
+                {item.time}
+              </span>
+            </div>
+          </div>
+        </DropdownMenuItem>
+        {idx < notifications.length - 1 && <DropdownMenuSeparator />}
+      </div>
+    ))
+  : (
+    <DropdownMenuItem className="justify-center text-gray-400">
+      Không có thông báo mới
+    </DropdownMenuItem>
+  )}
                 <DropdownMenuItem className="justify-center">
-                  <Link
-                    href="/notifications"
-                    className="text-primary font-medium"
-                  >
-                    Xem tất cả
-                  </Link>
+
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -253,6 +364,9 @@ return (
         </>
       )}
     </div>
+
+    {/* Hidden audio element for notification sound */}
+    <audio ref={audioRef} src="/sounds/receive.mp3" preload="auto" style={{ display: "none" }} />
   </>
 );
 }

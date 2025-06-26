@@ -7,7 +7,7 @@
 
 "use client";
 
-import { SearchBarProps } from "@/components/ui/navigation/types";
+import { SearchBarProps } from "@/app/(main)/_components/navigation/types";
 import { SearchIcon } from "lucide-react";
 import { useState } from "react";
 

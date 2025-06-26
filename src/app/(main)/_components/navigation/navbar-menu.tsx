@@ -7,9 +7,9 @@
 
 "use client";
 
-import NavigationItems from "@/components/ui/navigation/navbar-item";
-import UserActions from "@/components/ui/navigation/navbar-user";
-import { NavbarMenuProps } from "@/components/ui/navigation/types";
+import NavigationItems from "@/app/(main)/_components/navigation/navbar-item";
+import UserActions from "@/app/(main)/_components/navigation/navbar-user";
+import { NavbarMenuProps } from "@/app/(main)/_components/navigation/types";
 
 export default function NavbarMenu({
   state,

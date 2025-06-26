@@ -14,9 +14,9 @@
 
 "use client";
 
-import NavbarBrand from "@/components/ui/navigation/navbar-brand";
-import { navigation } from "@/components/ui/navigation/navbar-data";
-import NavbarMenu from "@/components/ui/navigation/navbar-menu";
+import NavbarBrand from "@/app/(main)/_components/navigation/navbar-brand";
+import { navigation } from "@/app/(main)/_components/navigation/navbar-data";
+import NavbarMenu from "@/app/(main)/_components/navigation/navbar-menu";
 import { useAuth } from "@/context/auth-context";
 import { useAuthModal } from "@/context/modal-context";
 import useScreen from "@/hooks/use-screen";
