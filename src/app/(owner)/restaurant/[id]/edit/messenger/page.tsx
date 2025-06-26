@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useSubscription } from '@apollo/client';
 import { MESSAGE_SENT_SUBSCRIPTION, MESSAGES_READ_SUBSCRIPTION } from '@/lib/graphql/subcriptions/messengerSubscriptions';
+import { Textarea } from '@/components/ui/textarea';
 
 const RestaurantMessengerPage = () => {
   const { user, getToken } = useAuth();
@@ -460,7 +461,7 @@ const RestaurantMessengerPage = () => {
               <div className="p-4 border-t border-gray-200 bg-white">
                 <div className="flex space-x-4">
                   <div className="flex-1">
-                    <textarea
+                    <Textarea
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       onKeyPress={handleKeyPress}

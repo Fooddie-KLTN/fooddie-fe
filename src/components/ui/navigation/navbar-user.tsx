@@ -22,13 +22,9 @@ import { useAuth } from "@/context/auth-context";
 import { useCart } from "@/context/cart-context";
 import {
   BellIcon,
-  CreditCardIcon,
   HeartIcon,
-  HelpCircleIcon,
-  LanguagesIcon,
   LogOutIcon,
   MessageSquareIcon,
-  SettingsIcon,
   ShoppingBagIcon,
   ShoppingCartIcon,
   UserIcon,
@@ -217,43 +213,17 @@ return (
               <DropdownMenuSeparator />
 
               {/* Communication section */}
-              <DropdownMenuItem className="text-base px-2 py-3 flex gap-2">
-                <BellIcon className="h-5 w-5" />
-                <span>Thông báo</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-base px-2 py-3 flex gap-2">
+              <DropdownMenuItem className="text-base px-2 py-3 flex gap-2"  onClick={() => router.push("/messenger")}>
                 <MessageSquareIcon className="h-5 w-5" />
                 <span>Tin nhắn</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
 
               {/* Settings section */}
-              <DropdownMenuItem className="text-base px-2 py-3 flex gap-2">
-                <LanguagesIcon className="h-5 w-5" />
-                <span>Ngôn ngữ</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-base px-2 py-3 flex gap-2">
-                <SettingsIcon className="h-5 w-5" />
-                <span>Cài đặt</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
 
               {/* Payment section */}
-              <DropdownMenuItem className="text-base px-2 py-3 flex gap-2">
-                <CreditCardIcon className="h-5 w-5" />
-                <span>Phương thức thanh toán</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-base px-2 py-3 flex gap-2">
-                <ShoppingBagIcon className="h-5 w-5" />
-                <span>Lịch sử mua</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
 
               {/* Help and logout */}
-              <DropdownMenuItem className="text-base px-2 py-3 flex gap-2">
-                <HelpCircleIcon className="h-5 w-5" />
-                <span>Trợ giúp và hỗ trợ</span>
-              </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-base px-2 py-3 flex gap-2 text-red-500"
                 onClick={handleLogout}

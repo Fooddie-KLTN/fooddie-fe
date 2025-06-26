@@ -104,40 +104,33 @@ const ImageSearchModal: React.FC<Props> = ({ open, onClose }) => {
           onMouseEnter={() => setHoveredIdx(idx)}
           onMouseLeave={() => setHoveredIdx(null)}
         >
-          <span
-            style={{
-              position: "absolute",
-              left: 0,
-              top: 0,
-              background: isHovered ? "#ea580c" : highlightColor,
-              color: "#fff",
-              fontWeight: 700,
-              fontSize: 14,
-              padding: "3px 12px 3px 8px",
-              borderRadius: "0 0 12px 0",
-              zIndex: 3,
-              cursor: "pointer",
-              pointerEvents: "auto",
-              boxShadow: isHovered
-                ? "0 2px 12px rgba(251,146,60,0.18)"
-                : "0 2px 6px rgba(0,0,0,0.08)",
-              letterSpacing: 0.2,
-              transition: "background 0.2s, box-shadow 0.2s",
-              outline: isHovered ? "2px solid #ea580c" : "none",
-            }}
-            onClick={e => {
-              e.stopPropagation();
-              router.push(`/search?search=${encodeURIComponent(det.class_name)}`);
-              onClose();
-            }}
-            onMouseEnter={() => setHoveredIdx(idx)}
-            onMouseLeave={() => setHoveredIdx(null)}
-          >
-            {det.class_name}{" "}
-            <span style={{ fontWeight: 400, fontSize: 12 }}>
-              ({(det.detection_confidence * 100).toFixed(1)}%)
+          {isHovered && (
+            <span
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                background: "#ea580c",
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: 14,
+                padding: "3px 12px 3px 8px",
+                borderRadius: "0 0 12px 0",
+                zIndex: 3,
+                cursor: "pointer",
+                pointerEvents: "auto",
+                boxShadow: "0 2px 12px rgba(251,146,60,0.18)",
+                letterSpacing: 0.2,
+                transition: "background 0.2s, box-shadow 0.2s",
+                outline: "2px solid #ea580c",
+              }}
+            >
+              {det.class_name}{" "}
+              <span style={{ fontWeight: 400, fontSize: 12 }}>
+                ({(det.detection_confidence * 100).toFixed(1)}%)
+              </span>
             </span>
-          </span>
+          )}
         </div>
       );
     });
