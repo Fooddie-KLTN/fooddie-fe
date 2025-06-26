@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import FoodCard from "../_components/food-card";
+import { useSearchParams } from "next/navigation";
 
 const priceRanges = [
   { label: "Dưới 50.000đ", value: "under50", min: 0, max: 50000 },
@@ -33,7 +34,10 @@ const radiusOptions = [
 ];
 
 export default function FoodSearchPage() {
-  const [search, setSearch] = useState("");
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get("search") || "";
+
+  const [search, setSearch] = useState(initialSearch);
   const debouncedSearch = useDebounce(search, 400);
 
   const [foods, setFoods] = useState<FoodPreview[]>([]);

@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { UploadCloudIcon } from "lucide-react";
 
 interface Detection {
   bbox: { x1: number; y1: number; x2: number; y2: number };
@@ -145,8 +146,15 @@ const ImageSearchModal: React.FC<Props> = ({ open, onClose }) => {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-2xl p-6 relative w-full max-w-lg border border-orange-200">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      onClick={onClose}
+      tabIndex={-1}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl p-6 relative w-full max-w-lg border border-orange-200 flex flex-col items-center"
+        onClick={e => e.stopPropagation()}
+      >
         <button
           className="absolute top-2 right-2 text-gray-400 hover:text-orange-500 text-2xl transition-colors"
           onClick={onClose}
@@ -157,30 +165,59 @@ const ImageSearchModal: React.FC<Props> = ({ open, onClose }) => {
         <h2 className="text-2xl font-bold mb-4 text-orange-600 flex items-center gap-2">
           <span role="img" aria-label="camera">📷</span> Tìm kiếm bằng hình ảnh
         </h2>
-        {/* Modern file input */}
-        <div className="mb-4 flex flex-col items-center">
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-full shadow transition-colors"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Chọn ảnh từ thiết bị
-          </button>
-          <input
-            title="Chọn ảnh từ thiết bị"
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            className="hidden"
-          />
-          {imageUrl && (
-            <span className="mt-2 text-xs text-gray-500">
-              Đã chọn ảnh: <span className="font-medium">{imageUrl.split('/').pop()}</span>
-            </span>
+        {/* Modern file input styled like add-category-modal */}
+        <div className="mb-4 flex flex-col items-center w-full">
+          {!imageUrl ? (
+            <div
+              className="w-full flex justify-center px-6 pt-5 pb-6 border-2 border-dashed border-gray-300 rounded-md cursor-pointer transition hover:border-orange-400"
+              onClick={() => !loading && fileInputRef.current?.click()}
+              tabIndex={0}
+              onKeyDown={e => {
+                if ((e.key === "Enter" || e.key === " ") && !loading) {
+                  fileInputRef.current?.click();
+                }
+              }}
+              role="button"
+              aria-label="Chọn ảnh từ thiết bị"
+            >
+              <input
+                title="Chọn ảnh từ thiết bị"
+                id="imageSearchInput"
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={handleFileChange}
+                disabled={loading}
+                tabIndex={-1}
+              />
+              <div className="space-y-1 text-center w-full flex flex-col items-center justify-center">
+                <UploadCloudIcon className="mx-auto h-12 w-12 text-gray-400" />
+                <div className="flex text-sm text-gray-600 justify-center">
+                  <span className="relative cursor-pointer bg-white rounded-md font-medium text-primary hover:text-primary-dark focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary">
+                    Tải lên một tệp
+                  </span>
+                  <p className="pl-1">hoặc kéo và thả</p>
+                </div>
+                <p className="text-xs text-gray-500">PNG, JPG, GIF, WEBP tối đa 2MB</p>
+              </div>
+            </div>
+          ) : (
+            <div className="w-full flex flex-col items-center justify-center">
+              <button
+                type="button"
+                className="text-sm text-primary hover:underline mt-2"
+                onClick={() => {
+                  setImageUrl(null);
+                  setDetections([]);
+                  setClassCounts({});
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+                disabled={loading}
+              >
+                Chọn ảnh khác
+              </button>
+            </div>
           )}
         </div>
         {loading && (
