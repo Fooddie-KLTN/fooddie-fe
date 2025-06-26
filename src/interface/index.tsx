@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { BackendUser } from "@/api/auth";
+import { FOOD_STATUS } from "@/lib/utils";
+
 export enum RestaurantStatus {
   PENDING = 'pending',
   APPROVED = 'approved',
@@ -26,6 +30,7 @@ export interface Ward {
   id: number;
   name: string;
 }
+
 export interface Address {
     id?: string; // Unique ID for each address (e.g., UUID or DB ID)
     label?: string; // Optional label like "Home", "Work"
@@ -49,6 +54,7 @@ export interface UserProfile {
 
   currentAddress?: Address; // Optional: Current address for quick access
 }
+
 /**
  * Interface for restaurant details
  */
@@ -97,19 +103,21 @@ export interface Restaurant {
   };
 }
 
+// Type for food status using the FOOD_STATUS const
+export type FoodStatus = typeof FOOD_STATUS[keyof typeof FOOD_STATUS];
+
 /**
  * Food preview interface for lists, cards, and rows
  */
 export interface FoodPreview {
   id?: string;
-    imageUrls: string[]; // Array of image URLs
-
+  imageUrls: string[]; // Array of image URLs
   name: string;
   description: string;
   price: number | string; // Price can be a number or string
   image: string;
   discountPercent?: number;
-  status?: string;
+  status?: FoodStatus; // Now uses the FOOD_STATUS const type
   tag?: string;
   preparationTime?: number;
   rating?: number;
@@ -123,8 +131,6 @@ export interface FoodPreview {
   // Related information
   category?: Category;
   restaurant: Restaurant;
-
-  
 }
 
 export interface Review {
@@ -142,6 +148,7 @@ export interface Review {
     avatar?: string;
   };
 }
+
 /**
  * Detailed food information with complete data
  */
@@ -154,8 +161,6 @@ export interface FoodDetail extends FoodPreview {
   reviews?: Review[]; // Optional reviews array
 
   totalReviews?: number; // <-- Added: total number of reviews
-
-
 }
 
 /**
@@ -171,6 +176,7 @@ export interface CartItem {
   discountPercent?: number;
   restaurantId?: string;
 }
+
 export interface OrderDetail {
   id: string;
   order: string | Order; // Usually just orderId, but can be populated
@@ -180,6 +186,7 @@ export interface OrderDetail {
   price: number | string;
   note?: string;
 }
+
 export enum PromotionType {
   FOOD_DISCOUNT = 'FOOD_DISCOUNT',
   SHIPPING_DISCOUNT = 'SHIPPING_DISCOUNT'
@@ -227,12 +234,14 @@ export enum ShippingStatus {
     CANCELLED = 'CANCELLED',
     RETURNED = 'RETURNED',
 }
+
 export interface ShippingDetail {
   id?: string;
   order: Order;
   shipper: UserProfile;
   status: ShippingStatus;
 }
+
 /**
  * Helper function to convert food to cart item
  */
@@ -247,4 +256,84 @@ export function foodToCartItem(food: FoodPreview, quantity: number = 1): CartIte
     discountPercent: food.discountPercent,
     restaurantId: food.restaurant?.id
   };
+}
+
+/**
+ * Type guard to check if a food status is valid
+ */
+export function isValidFoodStatus(status: string): status is FoodStatus {
+  return Object.values(FOOD_STATUS).includes(status as FoodStatus);
+}
+
+/**
+ * Helper function to safely get food status with fallback
+ */
+export function getFoodStatus(food: FoodPreview): FoodStatus {
+  if (food.status && isValidFoodStatus(food.status)) {
+    return food.status;
+  }
+  return FOOD_STATUS.PENDING; // Default fallback
+}
+
+export enum ConversationType {
+  CUSTOMER_SHOP = 'customer_shop',
+  CUSTOMER_SHIPPER = 'customer_shipper',
+  SUPPORT = 'support'
+}
+
+export interface Message {
+  id: string;
+  conversation: Conversation | string;
+  sender: BackendUser | UserProfile;
+  content: string;
+  messageType?: string; // 'text', 'image', 'file', 'location', 'order_update'
+  attachmentUrl?: string;
+  attachmentType?: string;
+  isRead: boolean;
+  readAt?: Date;
+  isEdited: boolean;
+  editedAt?: Date;
+  isDeleted: boolean;
+  deletedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  metadata?: any; // For storing additional data like order info, location coordinates, etc.
+  replyToMessageId?: string; // For reply functionality
+}
+
+export interface Conversation {
+  id: string;
+  participant1: UserProfile;
+  participant2: UserProfile;
+  lastMessage?: string;
+  lastMessageAt?: Date;
+  isBlocked: boolean;
+  blockedBy?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  messages?: Message[];
+  conversationType: ConversationType;
+  orderId?: string; // Required for customer-shipper conversations
+  restaurantId?: string; // Required for customer-shop conversations
+}
+
+/**
+ * DTO interfaces for messenger
+ */
+export interface CreateConversationDto {
+  participantId?: string; //  shipper ID if type is CUSTOMER_SHIPPER
+  orderId?: string; // Required for shipper conversations
+  restaurantId?: string; // Required for shop conversations
+  conversationType?: ConversationType;
+}
+
+export interface SendMessageDto {
+  conversationId: string;
+  content: string;
+  messageType?: string;
+  attachmentUrl?: string;
+  attachmentType?: string;
+  replyToMessageId?: string;
+  metadata?: any;
 }

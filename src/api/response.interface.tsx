@@ -98,3 +98,10 @@ export interface GetUsersResponse {
     data: UserProfile[];
     total: number;
 }
+
+/**
+ * Kết quả trả về khi lấy tất cả thức ăn
+ * @interface
+ * @property {PaginatedResponse<FoodResponse>} items - Danh sách thức ăn
+ * @property {number} total - Tổng số thức ăn trong hệ thống
+ */

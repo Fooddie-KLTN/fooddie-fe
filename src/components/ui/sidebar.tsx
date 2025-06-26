@@ -23,6 +23,7 @@ import {
   XIcon,
   StoreIcon,
   ChartNoAxesColumnIcon,
+  ChefHatIcon,
   ServerIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -66,6 +67,11 @@ const tabs: Tab[] = [
     label: "Quản lý cửa hàng",
     icon: StoreIcon,
     path: "/stores",
+  },
+  {
+    label: "Quản lý món ăn",
+    icon: ChefHatIcon,
+    path: "/foods",
   },
   {
     label: "Quản lý danh mục",
