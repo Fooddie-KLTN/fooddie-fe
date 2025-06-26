@@ -49,12 +49,27 @@ const RestaurantMessengerPage = () => {
         
         // Add message to current conversation messages
         setMessages(prev => {
-          const exists = prev.some(msg => msg.id === newMsg.id);
-          if (exists) {
-            console.log('🔄 Message already exists, skipping');
+          // If the real message already exists, skip
+          if (prev.some(msg => msg.id === newMsg.id)) {
             return prev;
           }
-          console.log('✅ Adding new message to UI:', newMsg);
+          // If a temp message with the same content and sender exists, replace it
+          const hasTemp = prev.some(
+            msg =>
+              msg.id.startsWith('temp_') &&
+              msg.content === newMsg.content &&
+              msg.sender.id === newMsg.sender.id
+          );
+          if (hasTemp) {
+            return prev.map(msg =>
+              msg.id.startsWith('temp_') &&
+              msg.content === newMsg.content &&
+              msg.sender.id === newMsg.sender.id
+                ? newMsg
+                : msg
+            );
+          }
+          // Otherwise, add the new message
           return [...prev, newMsg];
         });
         

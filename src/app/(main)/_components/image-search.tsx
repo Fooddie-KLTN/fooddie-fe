@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface Detection {
   bbox: { x1: number; y1: number; x2: number; y2: number };
@@ -22,6 +23,8 @@ const ImageSearchModal: React.FC<Props> = ({ open, onClose }) => {
   const [error, setError] = useState<string | null>(null);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   // For scaling boxes
   const [imgNatural, setImgNatural] = useState({ width: 1, height: 1 });
@@ -94,8 +97,8 @@ const ImageSearchModal: React.FC<Props> = ({ open, onClose }) => {
           }}
           title={det.class_name}
           onClick={() => {
-            window?.event?.stopPropagation?.();
-            console.log("Detection clicked:", det);
+            router.push(`/search?search=${encodeURIComponent(det.class_name)}`);
+            onClose();
           }}
           onMouseEnter={() => setHoveredIdx(idx)}
           onMouseLeave={() => setHoveredIdx(null)}
@@ -123,7 +126,8 @@ const ImageSearchModal: React.FC<Props> = ({ open, onClose }) => {
             }}
             onClick={e => {
               e.stopPropagation();
-              console.log("Label clicked:", det);
+              router.push(`/search?search=${encodeURIComponent(det.class_name)}`);
+              onClose();
             }}
             onMouseEnter={() => setHoveredIdx(idx)}
             onMouseLeave={() => setHoveredIdx(null)}
@@ -153,13 +157,32 @@ const ImageSearchModal: React.FC<Props> = ({ open, onClose }) => {
         <h2 className="text-2xl font-bold mb-4 text-orange-600 flex items-center gap-2">
           <span role="img" aria-label="camera">📷</span> Tìm kiếm bằng hình ảnh
         </h2>
-        <input
-          title="Chọn ảnh để nhận diện"
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          className="mb-4 block w-full file:rounded-full file:border-0 file:bg-orange-50 file:text-orange-700 file:font-semibold file:px-4 file:py-2 file:mr-4"
-        />
+        {/* Modern file input */}
+        <div className="mb-4 flex flex-col items-center">
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-full shadow transition-colors"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Chọn ảnh từ thiết bị
+          </button>
+          <input
+            title="Chọn ảnh từ thiết bị"
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+          {imageUrl && (
+            <span className="mt-2 text-xs text-gray-500">
+              Đã chọn ảnh: <span className="font-medium">{imageUrl.split('/').pop()}</span>
+            </span>
+          )}
+        </div>
         {loading && (
           <div className="flex items-center gap-2 text-orange-500 mb-2">
             <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
@@ -225,36 +248,6 @@ const ImageSearchModal: React.FC<Props> = ({ open, onClose }) => {
             </div>
           )}
         </div>
-
-        {/* Detection details */}
-        {detections.length > 0 && (
-          <div className="mt-5">
-            <h3 className="font-semibold mb-2 text-gray-700">Chi tiết nhận diện:</h3>
-            <ul className="space-y-1">
-              {detections.map((det, idx) => (
-                <li
-                  key={idx}
-                  className={`flex items-center gap-2 cursor-pointer rounded px-2 py-1 transition-colors ${
-                    hoveredIdx === idx
-                      ? "bg-orange-100 text-orange-700 shadow"
-                      : "hover:bg-orange-50"
-                  }`}
-                  onClick={() => console.log("Detection clicked:", det)}
-                  onMouseEnter={() => setHoveredIdx(idx)}
-                  onMouseLeave={() => setHoveredIdx(null)}
-                >
-                  <span className="font-medium">{det.class_name}</span>
-                  <span className="text-xs">
-                    (Độ tin cậy: {(det.detection_confidence * 100).toFixed(1)}%)
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    [{det.bbox.x1}, {det.bbox.y1}, {det.bbox.x2}, {det.bbox.y2}]
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
     </div>
   );
