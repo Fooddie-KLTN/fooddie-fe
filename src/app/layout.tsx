@@ -56,6 +56,8 @@ export default function RootLayout({
       <body className={`${montserrat.className} antialiased`}>
         <AuthProvider>{children}
         </AuthProvider>
+\
+
       </body>
     </html>
   );

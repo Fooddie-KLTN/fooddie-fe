@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Home, UtensilsCrossed, BarChart3, ShoppingBag,  LogOut, ChefHat } from 'lucide-react'; // Đã thêm ChefHat cho logo
+import { Home, UtensilsCrossed, BarChart3, ShoppingBag, LogOut, ChefHat, MessageCircle } from 'lucide-react'; // Đã thêm ChefHat cho logo
 
 // Định nghĩa các mục điều hướng
 const navItems = [
@@ -12,6 +12,7 @@ const navItems = [
     { href: 'basic-info', label: 'Thông tin cơ bản', icon: Home },
     { href: 'food-list', label: 'Thực đơn', icon: UtensilsCrossed }, // Đổi tên cho rõ ràng
     { href: 'order-list', label: 'Đơn hàng', icon: ShoppingBag },
+    { href: `messenger`, label: 'Tin nhắn', icon: MessageCircle },
 ];
 
 export function Sidebar() {
@@ -35,9 +36,9 @@ export function Sidebar() {
         <aside className="w-64 flex flex-col h-screen bg-primary text-primary-foreground p-6 border-r border-border/10 shadow-md">
             {/* Khu vực logo - căn giữa với icon */}
             <div className="mb-10 flex flex-col items-center">
-                 <div className="bg-primary-foreground/10 p-3 rounded-full mb-3">
-                     <ChefHat className="h-8 w-8 text-primary-foreground" />
-                 </div>
+                <div className="bg-primary-foreground/10 p-3 rounded-full mb-3">
+                    <ChefHat className="h-8 w-8 text-primary-foreground" />
+                </div>
                 <Link href="/" className="text-xl font-semibold tracking-tight">
                     Fooddie Chủ quán
                 </Link>

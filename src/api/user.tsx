@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Restaurant, FoodDetail, UserProfile, Order } from "@/interface";
+import { Restaurant, FoodDetail, UserProfile, Order, Message, Conversation, CreateConversationDto, SendMessageDto } from "@/interface";
 import { apiRequest } from "./base-api";
 import { CalculateOrderResponse, OrderResponse, PaginatedResponse } from "./response.interface";
 
@@ -441,6 +441,182 @@ export const userApi = {
         return await apiRequest<{hasReviewed: boolean}>(`/reviews/food/${foodId}/status`, 'GET', { token });
       } catch (error) {
         console.error('Check food review status API error:', error);
+        throw error;
+      }
+    }
+  },
+
+  /**
+   * Messenger API endpoints
+   */
+  messenger: {
+    /**
+     * Create or get existing conversation
+     * @param {string} token - Authentication token
+     * @param {CreateConversationDto} data - Conversation creation data
+     * @returns {Promise<Conversation>} - Created or existing conversation
+     */
+    async createOrGetConversation(token: string, data: CreateConversationDto): Promise<Conversation> {
+      try {
+        return await apiRequest<Conversation>('/messenger/conversations', 'POST', { token, data });
+      } catch (error) {
+        console.error('Create conversation API error:', error);
+        throw error;
+      }
+    },
+
+    /**
+     * Get user conversations with pagination
+     * @param {string} token - Authentication token
+     * @param {number} page - Page number (default 1)
+     * @param {number} pageSize - Items per page (default 10)
+     * @returns {Promise<PaginatedResponse<Conversation>>} - Paginated conversations
+     */
+    async getUserConversations(
+      token: string, 
+      page: number = 1, 
+      pageSize: number = 10
+    ): Promise<PaginatedResponse<Conversation>> {
+      try {
+        return await apiRequest<PaginatedResponse<Conversation>>(
+          '/messenger/conversations', 
+          'GET', 
+          { 
+            token, 
+            query: { page, pageSize } 
+          }
+        );
+      } catch (error) {
+        console.error('Get conversations API error:', error);
+        throw error;
+      }
+    },
+
+    /**
+     * Send a message
+     * @param {string} token - Authentication token
+     * @param {SendMessageDto} data - Message data
+     * @returns {Promise<Message>} - Sent message
+     */
+    async sendMessage(token: string, data: SendMessageDto): Promise<Message> {
+      try {
+        return await apiRequest<Message>('/messenger/messages', 'POST', { token, data });
+      } catch (error) {
+        console.error('Send message API error:', error);
+        throw error;
+      }
+    },
+
+    /**
+     * Get conversation messages with pagination
+     * @param {string} token - Authentication token
+     * @param {string} conversationId - Conversation ID
+     * @param {number} page - Page number (default 1)
+     * @param {number} pageSize - Items per page (default 20)
+     * @returns {Promise<PaginatedResponse<Message>>} - Paginated messages
+     */
+    async getConversationMessages(
+      token: string, 
+      conversationId: string, 
+      page: number = 1, 
+      pageSize: number = 20
+    ): Promise<PaginatedResponse<Message>> {
+      try {
+        return await apiRequest<PaginatedResponse<Message>>(
+          `/messenger/conversations/${conversationId}/messages`, 
+          'GET', 
+          { 
+            token, 
+            query: { page, pageSize } 
+          }
+        );
+      } catch (error) {
+        console.error('Get conversation messages API error:', error);
+        throw error;
+      }
+    },
+
+    /**
+     * Mark messages as read
+     * @param {string} token - Authentication token
+     * @param {string} conversationId - Conversation ID
+     * @returns {Promise<{success: boolean}>} - Success response
+     */
+    async markMessagesAsRead(token: string, conversationId: string): Promise<{success: boolean}> {
+      try {
+        return await apiRequest<{success: boolean}>(
+          `/messenger/conversations/${conversationId}/read`, 
+          'PUT', 
+          { token }
+        );
+      } catch (error) {
+        console.error('Mark messages as read API error:', error);
+        throw error;
+      }
+    },
+
+    /**
+     * Delete a message
+     * @param {string} token - Authentication token
+     * @param {string} messageId - Message ID
+     * @returns {Promise<{success: boolean}>} - Success response
+     */
+    async deleteMessage(token: string, messageId: string): Promise<{success: boolean}> {
+      try {
+        return await apiRequest<{success: boolean}>(
+          `/messenger/messages/${messageId}`, 
+          'DELETE', 
+          { token }
+        );
+      } catch (error) {
+        console.error('Delete message API error:', error);
+        throw error;
+      }
+    },
+
+    /**
+     * Toggle block/unblock conversation
+     * @param {string} token - Authentication token
+     * @param {string} conversationId - Conversation ID
+     * @returns {Promise<Conversation>} - Updated conversation
+     */
+    async toggleBlockConversation(token: string, conversationId: string): Promise<Conversation> {
+      try {
+        return await apiRequest<Conversation>(
+          `/messenger/conversations/${conversationId}/block`, 
+          'PUT', 
+          { token }
+        );
+      } catch (error) {
+        console.error('Toggle block conversation API error:', error);
+        throw error;
+      }
+    },
+
+    /**
+     * Get unread message count
+     * @param {string} token - Authentication token
+     * @returns {Promise<{unreadCount: number}>} - Unread count
+     */
+    async getUnreadMessageCount(token: string): Promise<{unreadCount: number}> {
+      try {
+        return await apiRequest<{unreadCount: number}>('/messenger/unread-count', 'GET', { token });
+      } catch (error) {
+        console.error('Get unread count API error:', error);
+        throw error;
+      }
+    },
+
+    /**
+     * Get available chat partners (restaurants/shippers user can chat with)
+     * @param {string} token - Authentication token
+     * @returns {Promise<any>} - Available partners
+     */
+    async getAvailableChatPartners(token: string): Promise<any> {
+      try {
+        return await apiRequest<any>('/messenger/available-partners', 'GET', { token });
+      } catch (error) {
+        console.error('Get available partners API error:', error);
         throw error;
       }
     }

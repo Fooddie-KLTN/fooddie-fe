@@ -18,6 +18,7 @@ import { FoodDetail, FoodPreview } from '@/interface';
 import ReviewsSection from './_components/review';
 import { guestService } from '@/api/guest';
 import { Action } from './_components/action';
+import Footer from '@/components/footer';
 
 
 
@@ -174,6 +175,7 @@ export default function FoodDetailPage() {
           viewAllLink={`/category/${food.category.id}`}
         />
       </div>
+      <Footer />
     </div>
   );
 }
