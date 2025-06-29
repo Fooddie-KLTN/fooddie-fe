@@ -12,7 +12,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import {
   BellRingIcon,
   ChevronDownIcon,
-  FileTextIcon,
   LibraryBigIcon,
   LogOutIcon,
   MenuIcon,
@@ -77,11 +76,6 @@ const tabs: Tab[] = [
     label: "Quản lý danh mục",
     icon: LibraryBigIcon,
     path: "/categories",
-  },
-  {
-    label: "Quản lý đơn hàng",
-    icon: FileTextIcon,
-    path: "/orders",
   },
   {
     label: "Quản lý shipper",

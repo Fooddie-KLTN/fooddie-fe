@@ -96,26 +96,6 @@ export default function UserActions({ openModal }: UserActionsProps) {
     }
   );
 
-const { data: notifQueryData } = useQuery<{ getUserNotifications: Notification[] }>(
-  GET_USER_NOTIFICATIONS,
-  {
-    skip: !user?.id,
-  }
-);
-  useEffect(() => {
-    if (notifQueryData?.getUserNotifications) {
-      setNotifications(
-        notifQueryData.getUserNotifications.map((notif) => ({
-          id: notif.id,
-          title: notif.content || notif.description || "Có thông báo mới",
-          time: new Date(notif.createdAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
-          type: notif.type,
-          isRead: notif.isRead,
-        }))
-      );
-    }
-  }, [notifQueryData]);
-
   useEffect(() => {
     let ignore = false;
     async function fetchNotifications() {

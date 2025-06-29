@@ -254,7 +254,7 @@ const RestaurantMessengerPage = () => {
   });
 
   return (
-    <div className="h-[calc(100vh-120px)] bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div className=" bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
       {/* Connection Error Alert */}
       {connectionError && (
         <div className="p-4 bg-yellow-50 border-b border-yellow-200">
@@ -365,9 +365,7 @@ const RestaurantMessengerPage = () => {
                           <p className="text-sm text-gray-500 truncate">
                             {conversation.lastMessage || 'Bắt đầu cuộc trò chuyện...'}
                           </p>
-                          {customer.phone && (
-                            <Phone className="h-3 w-3 text-gray-400" />
-                          )}
+
                         </div>
                       </div>
                     </div>
@@ -405,13 +403,7 @@ const RestaurantMessengerPage = () => {
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Button variant="outline" size="sm" className="flex items-center space-x-1">
-                      <Phone className="h-4 w-4" />
-                      <span>Gọi</span>
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex items-center space-x-1">
-                      <Filter className="h-4 w-4" />
-                    </Button>
+
                   </div>
                 </div>
               </div>
