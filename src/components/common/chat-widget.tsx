@@ -60,9 +60,7 @@ export default function ChatWidget() {
         throw new Error('Chưa đăng nhập hoặc token không tồn tại');
       }
 
-      console.log('[USER MESSAGE]', input, metadata);
-
-      const res = await fetch('http://localhost:3001/chat', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

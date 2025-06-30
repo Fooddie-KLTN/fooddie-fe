@@ -2,12 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useCart } from "@/context/cart-context";
 import { Card } from "@/components/ui/card";
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 
-import ActionButtons from './_components/action';
 import FoodDescription from './_components/food-description';
 import FoodImage from './_components/food-image';
 import FoodBasicInfo from './_components/food-info';
@@ -19,6 +17,8 @@ import FoodRow from '../../_components/ui/food-row';
 import { FoodDetail, FoodPreview } from '@/interface';
 import ReviewsSection from './_components/review';
 import { guestService } from '@/api/guest';
+import { Action } from './_components/action';
+import Footer from '@/components/footer';
 
 
 
@@ -30,7 +30,6 @@ export default function FoodDetailPage() {
   const [sameCategory, setSameCategory] = useState<FoodPreview[]>([]);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
-  const { addToCart } = useCart();
 
   useEffect(() => {
     const fetchFood = async () => {
@@ -67,21 +66,6 @@ export default function FoodDetailPage() {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
   };
 
-  const handleAddToCart = () => {
-    if (food && food.id) {
-      
-      // Passing the food ID as expected by addToCart
-      addToCart(food.id);
-    }
-  };
-
-  const handleBuyNow = () => {
-    if (food) {
-      // Add to cart and redirect to checkout
-      handleAddToCart();
-      window.location.href = "/checkout";
-    }
-  };
 
   const incrementQuantity = () => setQuantity(prev => prev + 1);
   const decrementQuantity = () => setQuantity(prev => prev > 1 ? prev - 1 : 1);
@@ -143,9 +127,8 @@ export default function FoodDetailPage() {
               formatPrice={formatPrice}
             />
 
-            <ActionButtons
-              onAddToCart={handleAddToCart}
-              onBuyNow={handleBuyNow}
+            <Action
+              food={food}
             />
           </div>
 
@@ -192,6 +175,7 @@ export default function FoodDetailPage() {
           viewAllLink={`/category/${food.category.id}`}
         />
       </div>
+      <Footer />
     </div>
   );
 }

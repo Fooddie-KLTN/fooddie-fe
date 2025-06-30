@@ -1,94 +1,308 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import LineChart from '@/components/ui/chart/line-chart';
 import StatCard from '@/components/ui/chart/stat-card';
 import BarChart from '@/components/ui/chart/bar-chart';
 import { Calendar1Icon, ChevronRightIcon } from 'lucide-react';
+import { adminService } from '@/api/admin';
+import { useAuth } from '@/context/auth-context';
 
 // Import reusable components
 import Header from '@/app/admin/(admin-panel)/_components/header';
-import NavigationBar from '@/app/admin/(admin-panel)/_components/tab';
 
 type TimePeriod = 'year' | 'month' | 'week';
-/**
- * @component AdminPage
- * 
- * @description
- * Trang Admin hiển thị dữ liệu thống kê về trang web.
- * Component này bao gồm biểu đồ đường thể hiện số lượng đơn hàng trong một khoảng thời gian,
- * biểu đồ cột thể hiện doanh thu trong một khoảng thời gian, và một tập hợp các thẻ thống kê
- * hiển thị số lượng học viên, học viên đã đăng ký và số lượng khóa học đã hoàn thành.
- * 
- * Component cũng bao gồm bộ lọc thời gian cho phép người dùng chọn khoảng thời gian
- * để xem dữ liệu. Các khoảng thời gian bao gồm năm, tháng và tuần.
- * 
- * @returns {React.ReactElement} Trang quản trị hiển thị dữ liệu thống kê
- */
+
+interface StatCardData {
+  title: string;
+  value: string;
+  previousValue: string;
+  change: string;
+  isPositive: boolean;
+}
+
+interface ChartData {
+  labels: string[];
+  values: number[];
+}
+
+// Updated interfaces to match actual backend response
+interface DashboardStats {
+  totalShippers?: number;
+  activeShippers?: number;
+  completedOrders?: number;
+  totalRevenue?: number;
+}
+
+// Based on your backend data: {"period":"year","activeShippers":1,"totalDeliveries":2}
+interface ShipperStats {
+  period: string;
+  activeShippers: number;
+  totalDeliveries: number;
+}
+
+// Based on your backend data
+interface OrderStats {
+  period: string;
+  totalOrders: number;
+  completedOrders: number;
+  completionRate: number;
+  breakdown: Array<{
+    status: string;
+    count: number;
+    percentage: string;
+  }>;
+}
+
+// Interface for chart API response that can have nested structure
+interface ChartApiResponse {
+  labels?: string[];
+  values?: number[];
+  order?: ChartData;
+  revenue?: ChartData;
+}
+
 const AdminPage = () => {
+    const { getToken } = useAuth();
     const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('year');
-    const [selectedMetric, setSelectedMetric] = useState<'overview' | 'orders' | 'revenue'>('overview');
-
-    const STAT_CARDS_DATA = [
-        {
-            title: "Shipper",
-            value: "13.281",
-            previousValue: "12.491",
-            change: "+13.28% so với năm trước",
-            isPositive: true,
-        },
-        {
-            title: "Shipper Hoạt Động",
-            value: "9.491",
-            previousValue: "8.564",
-            change: "+10.38% so với năm trước",
-            isPositive: true,
-        },
-        {
-            title: "Hoàn thành đơn hàng",
-            value: "90.672",
-            previousValue: "4.821",
-            change: "-11% so với năm trước",
-            isPositive: false,
-        }
-    ];
-
-    // Data for different time periods
-    const chartData = {
-        year: {
-            order: {
-                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                values: [150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250, 260],
-            },
-            revenue: {
-                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                values: [500, 300, 700, 400, 600, 200, 800, 500, 600, 700, 900, 800],
-            },
-        },
-        month: {
-            order: {
-                labels: Array.from({ length: 30 }, (_, i) => `${i + 1}`),
-                values: Array.from({ length: 30 }, () => Math.floor(Math.random() * 100) + 150),
-            },
-            revenue: {
-                labels: Array.from({ length: 30 }, (_, i) => `${i + 1}`),
-                values: Array.from({ length: 30 }, () => Math.floor(Math.random() * 400) + 400),
-            },
-        },
-        week: {
-            order: {
-                labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
-                values: [180, 190, 200, 210, 220, 230, 240],
-            },
-            revenue: {
-                labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
-                values: [600, 500, 700, 800, 600, 900, 700],
-            },
-        },
-    } as const;
+    const [selectedMetric] = useState<'overview' | 'orders' | 'revenue'>('overview');
     
-    // Get current data based on selected period
-    const currentData = chartData[selectedPeriod];
+    // State for API data
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [statsData, setStatsData] = useState<StatCardData[]>([]);
+    const [chartData, setChartData] = useState<{
+        order: ChartData;
+        revenue: ChartData;
+    }>({
+        order: { labels: [], values: [] },
+        revenue: { labels: [], values: [] }
+    });
+
+    // Helper function to safely extract chart data
+    const extractChartData = (apiResponse: ChartApiResponse): ChartData => {
+        // If response has nested structure (like {order: {labels: [], values: []}})
+        if (apiResponse.order) {
+            return {
+                labels: apiResponse.order.labels || [],
+                values: apiResponse.order.values || []
+            };
+        }
+        
+        if (apiResponse.revenue) {
+            return {
+                labels: apiResponse.revenue.labels || [],
+                values: apiResponse.revenue.values || []
+            };
+        }
+        
+        // If response has flat structure (like {labels: [], values: []})
+        return {
+            labels: apiResponse.labels || [],
+            values: apiResponse.values || []
+        };
+    };
+
+    // Safe max calculation for charts
+    const getSafeMaxValue = (values: number[]): number => {
+        if (!values || values.length === 0) return 10;
+        const maxValue = Math.max(...values);
+        return maxValue > 0 ? maxValue * 1.2 : 10;
+    };
+
+    // Safe number access with fallback
+    const safeNumber = (value: number | undefined, fallback: number = 0): number => {
+        return typeof value === 'number' ? value : fallback;
+    };
+
+    // Fetch dashboard data
+    const fetchDashboardData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const token = getToken();
+            if (!token) {
+                setError('Không tìm thấy token xác thực');
+                return;
+            }
+
+            // Fetch all data with better error handling
+            const results = await Promise.allSettled([
+                adminService.dashboard.getDashboardStats(token),
+                adminService.dashboard.getShipperStats(token, selectedPeriod),
+                adminService.dashboard.getOrderCompletionStats(token, selectedPeriod),
+                adminService.dashboard.getChartData(token, selectedPeriod, 'orders'),
+                adminService.dashboard.getChartData(token, selectedPeriod, 'revenue')
+            ]);
+
+            // Process results and handle any failures
+            const [
+                dashboardStatsResult,
+                shipperStatsResult,
+                orderStatsResult,
+                orderChartResult,
+                revenueChartResult
+            ] = results;
+
+            // Default values
+            const defaultDashboardStats: DashboardStats = {
+                totalShippers: 0,
+                activeShippers: 0,
+                completedOrders: 0,
+                totalRevenue: 0
+            };
+
+            const defaultShipperStats: ShipperStats = {
+                period: selectedPeriod,
+                activeShippers: 0,
+                totalDeliveries: 0
+            };
+
+            const defaultOrderStats: OrderStats = {
+                period: selectedPeriod,
+                totalOrders: 0,
+                completedOrders: 0,
+                completionRate: 0,
+                breakdown: []
+            };
+
+            const defaultChartData: ChartData = {
+                labels: [],
+                values: []
+            };
+ 
+            // Extract successful results or use defaults
+            const dashboardStats = dashboardStatsResult.status === 'fulfilled' 
+                ? dashboardStatsResult.value as DashboardStats
+                : defaultDashboardStats;
+
+            const shipperStats = shipperStatsResult.status === 'fulfilled' 
+                ? shipperStatsResult.value as unknown as ShipperStats
+                : defaultShipperStats;
+
+            const orderStats = orderStatsResult.status === 'fulfilled' 
+                ? orderStatsResult.value as unknown as OrderStats
+                : defaultOrderStats;
+
+            // Safely extract chart data
+            const orderChartData = orderChartResult.status === 'fulfilled' 
+                ? extractChartData(orderChartResult.value as ChartApiResponse)
+                : defaultChartData;
+
+            const revenueChartData = revenueChartResult.status === 'fulfilled' 
+                ? extractChartData(revenueChartResult.value as ChartApiResponse)
+                : defaultChartData;
+
+            // Log any failed requests
+            results.forEach((result, index) => {
+                if (result.status === 'rejected') {
+                    console.error(`API call ${index} failed:`, result.reason);
+                }
+            });
+
+            // Format stats data for StatCard components using actual backend data
+            const totalShippers = safeNumber(dashboardStats.totalShippers);
+            const activeShippers = safeNumber(shipperStats.activeShippers);
+            const totalDeliveries = safeNumber(shipperStats.totalDeliveries);
+            const completedOrders = safeNumber(orderStats.completedOrders);
+            const totalOrders = safeNumber(orderStats.totalOrders);
+            const completionRate = safeNumber(orderStats.completionRate);
+
+            const formattedStats: StatCardData[] = [
+                {
+                    title: "Tổng Shipper",
+                    value: totalShippers.toLocaleString(),
+                    previousValue: '0',
+                    change: `${activeShippers} shipper đang hoạt động`,
+                    isPositive: activeShippers > 0,
+                },
+                {
+                    title: "Shipper Hoạt Động", 
+                    value: activeShippers.toLocaleString(),
+                    previousValue: '0',
+                    change: `${totalDeliveries} giao hàng trong ${getPeriodText(selectedPeriod)}`,
+                    isPositive: totalDeliveries > 0,
+                },
+                {
+                    title: "Đơn Hàng Hoàn Thành",
+                    value: completedOrders.toLocaleString(),
+                    previousValue: totalOrders.toLocaleString(),
+                    change: `${completionRate.toFixed(1)}% tỷ lệ hoàn thành`,
+                    isPositive: completionRate > 50,
+                }
+            ];
+
+            setStatsData(formattedStats);
+            
+            // Set chart data with proper fallbacks
+            setChartData({
+                order: {
+                    labels: orderChartData.labels || [],
+                    values: orderChartData.values || []
+                },
+                revenue: {
+                    labels: revenueChartData.labels || [],
+                    values: revenueChartData.values || []
+                }
+            });
+
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+            setError(error instanceof Error ? error.message : 'Có lỗi xảy ra khi tải dữ liệu');
+            
+            // Set fallback data on error
+            setStatsData([
+                {
+                    title: "Tổng Shipper",
+                    value: "0",
+                    previousValue: "0",
+                    change: "0 shipper đang hoạt động",
+                    isPositive: false,
+                },
+                {
+                    title: "Shipper Hoạt Động",
+                    value: "0",
+                    previousValue: "0",
+                    change: `0 giao hàng trong ${getPeriodText(selectedPeriod)}`,
+                    isPositive: false,
+                },
+                {
+                    title: "Đơn Hàng Hoàn Thành",
+                    value: "0",
+                    previousValue: "0",
+                    change: "0.0% tỷ lệ hoàn thành",
+                    isPositive: false,
+                }
+            ]);
+            
+            setChartData({
+                order: { labels: [], values: [] },
+                revenue: { labels: [], values: [] }
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Helper function to get period text
+    const getPeriodText = (period: TimePeriod): string => {
+        switch (period) {
+            case 'year': return 'năm';
+            case 'month': return 'tháng';
+            case 'week': return 'tuần';
+            default: return 'kỳ';
+        }
+    };
+
+    // Fetch data when component mounts or period changes
+    useEffect(() => {
+        fetchDashboardData();
+    }, [selectedPeriod]);
+
+    // Handle period change
+    const handlePeriodChange = (period: TimePeriod) => {
+        setSelectedPeriod(period);
+    };
 
     // Header configuration
     const headerActions = [
@@ -100,62 +314,81 @@ const AdminPage = () => {
         },
     ];
 
-    // Tab configuration
-    const tabs = [
-        {
-            key: 'overview',
-            label: 'Tổng quan'
-        },
-        {
-            key: 'orders',
-            label: 'Đơn hàng'
-        },
-        {
-            key: 'revenue',
-            label: 'Doanh thu'
-        }
-    ];
+
+    // Loading state
+    if (loading) {
+        return (
+            <div className="p-4">
+                <Header 
+                    title="Thống kê"
+                    description="Đang tải dữ liệu thống kê..."
+                    actions={headerActions}
+                />
+                <div className="flex items-center justify-center h-64">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+            </div>
+        );
+    }
+
+    // Error state
+    if (error) {
+        return (
+            <div className="p-4">
+                <Header 
+                    title="Thống kê"
+                    description="Có lỗi xảy ra khi tải dữ liệu"
+                    actions={headerActions}
+                />
+                <div className="flex items-center justify-center h-64">
+                    <div className="text-center">
+                        <p className="text-red-600 mb-4">{error}</p>
+                        <button
+                            onClick={fetchDashboardData}
+                            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+                        >
+                            Thử lại
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-4">
-            {/* Header - Using the Header component */}
+            {/* Header */}
             <Header 
                 title="Thống kê"
-                description="Quan sát tại danh sách các thành viên đã hoàn thành khóa học trong vòng 12 tháng"
+                description="Quan sát dữ liệu thống kê hệ thống trong thời gian thực"
                 actions={headerActions}
             />
 
-            {/* Navigation Tabs - Using the NavigationBar component */}
-            <NavigationBar
-                activeTab={selectedMetric}
-                onTabChange={(tab) => setSelectedMetric(tab as 'overview' | 'orders' | 'revenue')}
-                tabs={tabs}
-            />
 
             {/* Time Filter */}
             <div className="flex flex-wrap space-x-0 space-y-2 sm:space-x-4 sm:space-y-0 mb-6">
                 <button
-                    onClick={() => setSelectedPeriod('year')}
+                    onClick={() => handlePeriodChange('year')}
                     className={`px-4 py-2 rounded-lg transition-colors ${selectedPeriod === 'year'
-                            ? 'bg-blue-500 text-white'
+                            ? 'bg-primary text-white'
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
                 >
                     12 tháng
                 </button>
                 <button
-                    onClick={() => setSelectedPeriod('month')}
+                    onClick={() => handlePeriodChange('month')}
                     className={`px-4 py-2 rounded-lg transition-colors ${selectedPeriod === 'month'
-                            ? 'bg-blue-500 text-white'
+                            ? 'bg-primary text-white'
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
                 >
                     30 ngày
                 </button>
                 <button
-                    onClick={() => setSelectedPeriod('week')}
+                    onClick={() => handlePeriodChange('week')}
                     className={`px-4 py-2 rounded-lg transition-colors ${selectedPeriod === 'week'
-                            ? 'bg-blue-500 text-white'
+                            ? 'bg-primary text-white'
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
                 >
@@ -172,7 +405,7 @@ const AdminPage = () => {
                 <>
                     {/* Statistical Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                        {STAT_CARDS_DATA.map((card, index) => (
+                        {statsData.map((card, index) => (
                             <StatCard key={index} {...card} />
                         ))}
                     </div>
@@ -180,34 +413,44 @@ const AdminPage = () => {
                     {/* Line Chart */}
                     <div className="bg-white p-6 rounded-lg shadow-md mb-6">
                         <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-semibold">Đơn hàng</h2>
-                            <button className="text-blue-500 hover:underline">Chi tiết</button>
+                            <h2 className="text-xl font-semibold">Đơn hàng theo {getPeriodText(selectedPeriod)}</h2>
                         </div>
-                        <LineChart
-                            data={[...currentData.order.values]}
-                            labels={[...currentData.order.labels]}
-                            label="Đơn hàng"
-                            maxValue={300}
-                            color="#1E3A8A"
-                            fillColor="rgba(30, 58, 138, 0.1)"
-                        />
+                        {chartData.order.values.length > 0 ? (
+                            <LineChart
+                                data={chartData.order.values}
+                                labels={chartData.order.labels}
+                                label="Đơn hàng"
+                                maxValue={getSafeMaxValue(chartData.order.values)}
+                                color="#1E3A8A"
+                                fillColor="rgba(30, 58, 138, 0.1)"
+                            />
+                        ) : (
+                            <div className="flex items-center justify-center h-64 text-gray-500">
+                                Không có dữ liệu đơn hàng
+                            </div>
+                        )}
                     </div>
 
                     {/* Bar Chart */}
                     <div className="bg-white p-6 rounded-lg shadow-md">
                         <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-semibold">Doanh số</h2>
-                            <button className="text-blue-500 hover:underline">Chi tiết</button>
+                            <h2 className="text-xl font-semibold">Doanh thu theo {getPeriodText(selectedPeriod)}</h2>
                         </div>
-                        <BarChart
-                            data={[...currentData.revenue.values]}
-                            labels={[...currentData.revenue.labels]}
-                            label="Doanh số"
-                            maxValue={1000}
-                            backgroundColor="#E5E7EB"
-                            borderRadius={4}
-                            barThickness={32}
-                        />
+                        {chartData.revenue.values.length > 0 ? (
+                            <BarChart
+                                data={chartData.revenue.values}
+                                labels={chartData.revenue.labels}
+                                label="Doanh thu (VNĐ)"
+                                maxValue={getSafeMaxValue(chartData.revenue.values)}
+                                backgroundColor="#E5E7EB"
+                                borderRadius={4}
+                                barThickness={32}
+                            />
+                        ) : (
+                            <div className="flex items-center justify-center h-64 text-gray-500">
+                                Không có dữ liệu doanh thu
+                            </div>
+                        )}
                     </div>
                 </>
             )}
@@ -215,35 +458,47 @@ const AdminPage = () => {
             {selectedMetric === 'orders' && (
                 <div className="bg-white p-6 rounded-lg shadow-md">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-semibold">Đơn hàng</h2>
+                        <h2 className="text-xl font-semibold">Đơn hàng theo {getPeriodText(selectedPeriod)}</h2>
                         <button className="text-blue-500 hover:underline">Chi tiết</button>
                     </div>
-                    <LineChart
-                        data={[...currentData.order.values]}
-                        labels={[...currentData.order.labels]}
-                        label="Đơn hàng"
-                        maxValue={300}
-                        color="#1E3A8A"
-                        fillColor="rgba(30, 58, 138, 0.1)"
-                    />
+                    {chartData.order.values.length > 0 ? (
+                        <LineChart
+                            data={chartData.order.values}
+                            labels={chartData.order.labels}
+                            label="Đơn hàng"
+                            maxValue={getSafeMaxValue(chartData.order.values)}
+                            color="#1E3A8A"
+                            fillColor="rgba(30, 58, 138, 0.1)"
+                        />
+                    ) : (
+                        <div className="flex items-center justify-center h-64 text-gray-500">
+                            Không có dữ liệu đơn hàng
+                        </div>
+                    )}
                 </div>
             )}
 
             {selectedMetric === 'revenue' && (
                 <div className="bg-white p-6 rounded-lg shadow-md">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-semibold">Doanh số</h2>
+                        <h2 className="text-xl font-semibold">Doanh thu theo {getPeriodText(selectedPeriod)}</h2>
                         <button className="text-blue-500 hover:underline">Chi tiết</button>
                     </div>
-                    <BarChart
-                        data={[...currentData.revenue.values]}
-                        labels={[...currentData.revenue.labels]}
-                        label="Doanh số"
-                        maxValue={1000}
-                        backgroundColor="#E5E7EB"
-                        borderRadius={4}
-                        barThickness={32}
-                    />
+                    {chartData.revenue.values.length > 0 ? (
+                        <BarChart
+                            data={chartData.revenue.values}
+                            labels={chartData.revenue.labels}
+                            label="Doanh thu (VNĐ)"
+                            maxValue={getSafeMaxValue(chartData.revenue.values)}
+                            backgroundColor="#E5E7EB"
+                            borderRadius={4}
+                            barThickness={32}
+                        />
+                    ) : (
+                        <div className="flex items-center justify-center h-64 text-gray-500">
+                            Không có dữ liệu doanh thu
+                        </div>
+                    )}
                 </div>
             )}
         </div>

@@ -1,10 +1,35 @@
 // adminApi.ts
-import { Address,  Promotion, Review, UserProfile } from "@/interface";
+import { Address,  FoodDetail,  Promotion, Restaurant, Review, UserProfile } from "@/interface";
 import { apiRequest } from "./base-api";
 import * as response from "./response.interface";
 
 
+interface DashboardStats {
+  totalShippers: number;
+  activeShippers: number;
+  completedOrders: number;
+  totalRevenue: number;
+  // Add other stats as needed
+}
 
+interface ChartData {
+  labels: string[];
+  values: number[];
+}
+
+interface ShipperStats {
+  total: number;
+  active: number;
+  changePercentage: number;
+  isPositive: boolean;
+}
+
+interface OrderStats {
+  completed: number;
+  total: number;
+  changePercentage: number;
+  isPositive: boolean;
+}
 /**
  * Thông tin người dùng trả về từ API
  * @interface
@@ -1005,4 +1030,111 @@ export const adminService = {
 			}
 		}
 	},
+	restaurant: {
+	async getRestaurants(token: string, page: number = 1, pageSize: number = 10): Promise<response.PaginatedResponse<Restaurant>> {
+		try {
+			return await apiRequest<response.PaginatedResponse<Restaurant>>('/restaurants', 'GET', {
+				token,
+				query: { page, pageSize }
+			});
+		} catch (error) {
+			console.error('Lỗi API lấy danh sách nhà hàng:', error);
+			throw error;
+		}
+	}
+},
+food: {
+	async getFoods(token: string, page: number = 1, limit: number = 10,
+		search: string = '',
+		restaurantId : string = 'all',
+		categoryId : string = 'all',
+		status: string = 'all'
+	 ): Promise<response.PaginatedResponse<FoodDetail>> {
+		try {
+			return await apiRequest<response.PaginatedResponse<FoodDetail>>('/foods/all', 'GET', {
+				token,
+				query: { page, limit, search, restaurantId, categoryId, status	 }
+			});
+		} catch (error) {
+			console.error('Lỗi API lấy danh sách món ăn:', error);
+			throw error;
+		}
+	},
+	async deleteFood(token: string, id: string): Promise<void> {
+		try {
+			await apiRequest<void>(`/foods/${id}`, 'DELETE', { token });
+		} catch (error) {
+			console.error(`Lỗi API xóa món ăn ID=${id}:`, error);
+			throw error;
+		}
+	}
+},
+dashboard: {
+  /**
+   * Get dashboard statistics
+   */
+  async getDashboardStats(token: string): Promise<DashboardStats> {
+    try {
+      return await apiRequest<DashboardStats>('/dashboard/stats', 'GET', { token });
+    } catch (error) {
+      console.error('Lỗi API lấy thống kê dashboard:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get chart data for dashboard
+   */
+  async getChartData(
+    token: string, 
+    period: 'year' | 'month' | 'week' = 'year',
+    metric: 'overview' | 'orders' | 'revenue' = 'overview'
+  ): Promise<ChartData> {
+    try {
+      return await apiRequest<ChartData>('/dashboard/chart-data', 'GET', {
+        token,
+        query: { period, metric }
+      });
+    } catch (error) {
+      console.error('Lỗi API lấy dữ liệu biểu đồ:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get shipper statistics
+   */
+  async getShipperStats(
+    token: string,
+    period: 'year' | 'month' | 'week' = 'year'
+  ): Promise<ShipperStats> {
+    try {
+      return await apiRequest<ShipperStats>('/dashboard/shipper-stats', 'GET', {
+        token,
+        query: { period }
+      });
+    } catch (error) {
+      console.error('Lỗi API lấy thống kê shipper:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get order completion statistics
+   */
+  async getOrderCompletionStats(
+    token: string,
+    period: 'year' | 'month' | 'week' = 'year'
+  ): Promise<OrderStats> {
+    try {
+      return await apiRequest<OrderStats>('/dashboard/order-completion-stats', 'GET', {
+        token,
+        query: { period }
+      });
+    } catch (error) {
+      console.error('Lỗi API lấy thống kê hoàn thành đơn hàng:', error);
+      throw error;
+    }
+  }
+}
 };
