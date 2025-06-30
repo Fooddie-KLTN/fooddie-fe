@@ -8,7 +8,6 @@ const isClient = typeof window !== 'undefined';
 const sendSound = isClient ? new Audio('/sounds/send.mp3') : null;
 const receiveSound = isClient ? new Audio('/sounds/receive.mp3') : null;
 
-
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
   type Message = {
@@ -22,8 +21,7 @@ export default function ChatWidget() {
       link: string;
     }[];
   };
-  
-  
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -32,51 +30,67 @@ export default function ChatWidget() {
   const { getToken } = useAuth();
   const router = useRouter();
 
+  const [metadata, setMetadata] = useState({
+    orderItems: [],
+    addresses: [],
+    isOrdering: false,
+    isFoodConfirmed: false,
+    isRestaurantConfirmed: false,
+    isAddressConfirmed: false,
+    isPaymentConfirmed: false,
+  });
+
+
+  useEffect(() => {
+    localStorage.setItem('metadata', JSON.stringify(metadata));
+  }, [metadata]);
+  // Hàm gửi tin nhắn và gửi metadata cho BE
   const sendMessage = async () => {
     if (!input.trim()) return;
-  
+
     setMessages((prev) => [...prev, { from: 'user', text: input }]);
     sendSound?.play();
     setInput('');
     setIsTyping(true);
-  
+
     try {
       const token = await getToken();
-      console.log('[TOKEN]', token);
       if (!token) {
         console.error('[AUTH] Token không tồn tại!');
         throw new Error('Chưa đăng nhập hoặc token không tồn tại');
       }
-  
+
+      console.log('[USER MESSAGE]', input, metadata);
+
       const res = await fetch('http://localhost:3001/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ userMessage: input }),
+        body: JSON.stringify({ userMessage: input, metadata }),
       });
-  
+
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || 'Lỗi không xác định từ server');
       }
-  
+
       const data = await res.json();
       console.log('[BOT REPLY]', data);
-  
-      // ✅ fallback xử lý nếu data.reply bị lồng object
+
       const actualReply =
         typeof data.reply === 'string'
           ? data.reply
           : data.reply?.reply || 'Bot không trả lời được.';
-  
+
       const actualSuggestions = Array.isArray(data.reply?.suggestions)
         ? data.reply.suggestions
         : Array.isArray(data.suggestions)
           ? data.suggestions
           : [];
-  
+
+      // Cập nhật messages với phản hồi từ bot
       setMessages((prev) => [
         ...prev,
         {
@@ -85,19 +99,38 @@ export default function ChatWidget() {
           foodCards: actualSuggestions,
         },
       ]);
-  
+
+      // Cập nhật metadata từ phản hồi của bot
+      setMetadata((prev) => ({
+        ...prev,
+        isOrdering: data.metadata?.isOrdering ?? prev.isOrdering,
+        isFoodConfirmed: data.metadata?.isFoodConfirmed ?? prev.isFoodConfirmed,
+        isRestaurantConfirmed: data.metadata?.isRestaurantConfirmed ?? prev.isRestaurantConfirmed,
+        isAddressConfirmed: data.metadata?.isAddressConfirmed ?? prev.isAddressConfirmed,
+        isPaymentConfirmed: data.metadata?.isPaymentConfirmed ?? prev.isPaymentConfirmed,
+        orderItems: data.metadata?.orderItems ?? prev.orderItems,
+      }));
+
       receiveSound?.play();
     } catch (err) {
-      console.error('[BOT ERROR]', err);
+      // Kiểm tra nếu lỗi là đối tượng Error
+      if (err instanceof Error) {
+        console.log('[BOT ERROR]', err.message); // Lỗi từ exception
+        console.log('[BOT ERROR STACK]', err.stack); // Stack trace của lỗi
+      } else {
+        // Nếu không phải lỗi thông thường, log đối tượng lỗi
+        console.log('[BOT ERROR]', err);
+      }
+      
+      // Cập nhật trạng thái tin nhắn lỗi
       setMessages((prev) => [
         ...prev,
-        { from: 'bot', text: 'Xin lỗi, đã có lỗi xảy ra khi gửi tin nhắn.' },
+        { from: 'bot', text: 'Xin lỗi, đã có lỗi xảy ra khi gửi tin nhắn. Vui lòng thử lại sau.' },
       ]);
-    } finally {
+    }     finally {
       setIsTyping(false);
     }
   };
-  
 
   useEffect(() => {
     chatRef.current?.scrollTo(0, chatRef.current.scrollHeight);
@@ -107,9 +140,7 @@ export default function ChatWidget() {
     <div className="fixed bottom-4 right-4 z-50">
       {/* Khung chat */}
       <div
-        className={`transition-all duration-300 ${
-          open ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
-        }`}
+        className={`transition-all duration-300 ${open ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}
       >
         {open && (
           <div className="w-80 h-96 shadow-xl rounded-lg flex flex-col border border-[#9F6508] bg-gradient-to-br from-[#F3C871] to-[#FFF3B4]">
@@ -132,13 +163,10 @@ export default function ChatWidget() {
                       />
                     )}
                     <div
-                      className={`
-                        max-w-[75%] p-2 rounded-md text-sm 
-                        whitespace-normal break-normal
+                      className={`max-w-[75%] p-2 rounded-md text-sm whitespace-normal break-normal
                         ${msg.from === 'user'
                           ? 'bg-white border border-[#F3C871] self-end mr-2'
-                          : 'bg-white border border-[#9F6508] self-start ml-2'}
-                      `}
+                          : 'bg-white border border-[#9F6508] self-start ml-2'}`}
                     >
                       {msg.text}
                       {msg.foodCards && msg.foodCards.length > 0 && (
@@ -169,7 +197,6 @@ export default function ChatWidget() {
                   </div>
                 </div>
               ))}
-
               {isTyping && (
                 <div className="flex justify-start text-sm italic text-gray-600 px-2">Bot đang trả lời...</div>
               )}
