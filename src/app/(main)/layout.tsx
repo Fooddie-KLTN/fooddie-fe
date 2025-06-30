@@ -2,7 +2,7 @@
  * @fileoverview Layout chính của ứng dụng bao quanh tất cả các trang trong đường dẫn (main).
  */
 "use client";
-import Navbar from "@/components/ui/navigation/navbar";
+
 import { CartProvider } from "@/context/cart-context";
 import { AuthModalProvider } from "@/context/modal-context";
 import React from "react";
@@ -22,6 +22,7 @@ import { usePathname } from "next/navigation";
 import { HomeIcon, ChevronRightIcon } from "lucide-react";
 import { ApolloProvider } from '@apollo/client';
 import { apolloClient } from '@/lib/graphql/apolloClient';
+import Navbar from "./_components/navigation/navbar";
 
 // Enhanced path mapping for breadcrumbs with more detailed routes
 const pathMap: Record<string, { label: string; parent?: string; icon?: React.ReactNode }> = {
@@ -160,6 +161,7 @@ export default function RootLayout({
 
   return (
     <>
+                    <ApolloProvider client={apolloClient}>
       <NotificationProvider>
         <AuthModalProvider>
           <CartProvider>
@@ -207,9 +209,9 @@ export default function RootLayout({
                 </div>
               )}
               <main className="min-h-screen">
-                <ApolloProvider client={apolloClient}>
+
                 {children}
-                </ApolloProvider>
+
               </main>
               <ChatWidget />
             </GeoLocationProvider>
@@ -217,6 +219,7 @@ export default function RootLayout({
         </AuthModalProvider>
 
       </NotificationProvider>
+      </ApolloProvider>
     </>
   );
 }

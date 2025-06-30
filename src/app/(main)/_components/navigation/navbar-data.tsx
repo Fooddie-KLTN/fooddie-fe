@@ -5,7 +5,7 @@
  * Each navigation item can be a simple link or a dropdown with sub-items.
  */
 
-import { NavItem } from "@/components/ui/navigation/types";
+import { NavItem } from "@/app/(main)/_components/navigation/types";
 
 /**
  * Main navigation items array

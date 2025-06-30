@@ -4,10 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { Bell, X, User, Package } from 'lucide-react';
 import { useOwnerNotification } from '@/context/owner-notification-context';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
+
+
 
 export function NotificationPopup() {
-  const { notifications, clearNotifications, markAsRead, unreadCount, readOrderIds } = useOwnerNotification();
+  const { notifications, clearNotifications, markAsRead, unreadCount, readIds } = useOwnerNotification();
   const [isOpen, setIsOpen] = useState(false);
   const [showNewOrderAlert, setShowNewOrderAlert] = useState(false);
 
@@ -36,54 +37,51 @@ export function NotificationPopup() {
 
   // New order alert popup
   if (showNewOrderAlert && notifications.length > 0) {
-    const latestOrder = notifications[0];
-    return (
-      <div className="fixed top-4 right-4 z-50 bg-white border-l-4 border-orange-500 rounded-lg shadow-lg p-4 max-w-sm animate-slide-in-right">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start space-x-3">
-            <div className="bg-orange-100 p-2 rounded-full">
-              <Bell className="h-5 w-5 text-orange-600" />
-            </div>
-            <div className="flex-1">
-              <h4 className="font-semibold text-gray-900">Đơn hàng mới!</h4>
-              <p className="text-sm text-gray-600">
-                #{latestOrder.id.slice(-8)} - {formatCurrency(latestOrder.total || 0)}
-              </p>
-              <p className="text-xs text-gray-500">
-                {latestOrder.user?.name} - {formatTime(latestOrder.createdAt)}
-              </p>
-              <div className="mt-2 flex space-x-2">
-                <Link href={`/restaurant/${latestOrder.restaurant?.id}/edit/order-list`}>
-                  <Button size="sm" className="text-xs">
-                    Xem chi tiết
+    const latest = notifications[0];
+    if (latest.type === "order") {
+      return (
+        <div className="fixed top-4 right-4 z-50 bg-white border-l-4 border-orange-500 rounded-lg shadow-lg p-4 max-w-sm animate-slide-in-right">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start space-x-3">
+              <div className="bg-orange-100 p-2 rounded-full">
+                <Bell className="h-5 w-5 text-orange-600" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-gray-900">Đơn hàng mới!</h4>
+                <p className="text-sm text-gray-600">
+                  #{latest.id.slice(-8)} - {formatCurrency(latest.total || 0)}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {latest.user?.name} - {formatTime(latest.createdAt)}
+                </p>
+                <div className="mt-2 flex space-x-2">
+
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="text-xs"
+                    onClick={() => {
+                      markAsRead(latest.id);
+                      setShowNewOrderAlert(false);
+                    }}
+                  >
+                    Đánh dấu đã đọc
                   </Button>
-                </Link>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="text-xs"
-                  onClick={() => {
-                    markAsRead(latestOrder.id);
-                    setShowNewOrderAlert(false);
-                  }}
-                >
-                  Đánh dấu đã đọc
-                </Button>
+                </div>
               </div>
             </div>
+            <button
+              type="button"
+              aria-label="Close"
+              onClick={() => setShowNewOrderAlert(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-          <button
-            type="button"
-            aria-label="Close"
-
-            onClick={() => setShowNewOrderAlert(false)}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <X className="h-4 w-4" />
-          </button>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
   return (
@@ -140,38 +138,69 @@ export function NotificationPopup() {
             
             <div className="max-h-80 overflow-y-auto">
               {notifications.length > 0 ? (
-                notifications.map((order) => {
-                  const isRead = readOrderIds.has(order.id);
+                notifications.map((notif) => {
+                  const isRead = readIds.has(notif.id);
+                  if (notif.type === "order") {
+                    return (
+                      <div
+                        key={notif.id}
+                        className={`p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
+                          !isRead ? 'bg-orange-50' : ''
+                        }`}
+                        onClick={() => markAsRead(notif.id)}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className={`p-2 rounded-full ${!isRead ? 'bg-orange-100' : 'bg-gray-100'}`}>
+                            <Package className={`h-4 w-4 ${!isRead ? 'text-orange-600' : 'text-gray-600'}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className="font-medium text-sm text-gray-900">
+                                Đơn hàng #{notif.id.slice(-8)}
+                              </p>
+                              <span className="text-xs text-gray-500">
+                                {formatTime(notif.createdAt)}
+                              </span>
+                            </div>
+                            <div className="mt-1 flex items-center space-x-2 text-xs text-gray-600">
+                              <User className="h-3 w-3" />
+                              <span>{notif.user?.name}</span>
+                            </div>
+                            <div className="mt-1 text-sm font-medium text-gray-900">
+                              {formatCurrency(notif.total || 0)}
+                            </div>
+                            <div className="mt-1 text-xs text-gray-500">
+                              {notif.orderDetails?.length || 0} món
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  // Message notification
                   return (
-                    <div 
-                      key={order.id} 
-                      className={`p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
-                        !isRead ? 'bg-orange-50' : ''
+                    <div
+                      key={notif.id}
+                      className={`p-4 border-b border-gray-100 hover:bg-blue-50 cursor-pointer ${
+                        !isRead ? 'bg-blue-50' : ''
                       }`}
-                      onClick={() => markAsRead(order.id)}
+                      onClick={() => markAsRead(notif.id)}
                     >
                       <div className="flex items-start space-x-3">
-                        <div className={`p-2 rounded-full ${!isRead ? 'bg-orange-100' : 'bg-gray-100'}`}>
-                          <Package className={`h-4 w-4 ${!isRead ? 'text-orange-600' : 'text-gray-600'}`} />
+                        <div className={`p-2 rounded-full ${!isRead ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                          <Bell className={`h-4 w-4 ${!isRead ? 'text-blue-600' : 'text-gray-600'}`} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
                             <p className="font-medium text-sm text-gray-900">
-                              Đơn hàng #{order.id.slice(-8)}
+                              Tin nhắn mới từ {notif.sender}
                             </p>
                             <span className="text-xs text-gray-500">
-                              {formatTime(order.createdAt)}
+                              {formatTime(notif.createdAt)}
                             </span>
                           </div>
-                          <div className="mt-1 flex items-center space-x-2 text-xs text-gray-600">
-                            <User className="h-3 w-3" />
-                            <span>{order.user?.name}</span>
-                          </div>
-                          <div className="mt-1 text-sm font-medium text-gray-900">
-                            {formatCurrency(order.total || 0)}
-                          </div>
-                          <div className="mt-1 text-xs text-gray-500">
-                            {order.orderDetails?.length || 0} món
+                          <div className="mt-1 text-sm text-gray-700">
+                            {notif.content}
                           </div>
                         </div>
                       </div>

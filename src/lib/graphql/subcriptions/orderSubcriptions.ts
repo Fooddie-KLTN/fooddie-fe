@@ -36,3 +36,14 @@ export const ORDER_CREATED_SUBSCRIPTION = gql`
     }
   }
 `;
+
+export const ORDER_STATUS_SUBSCRIPTION = gql`
+  subscription OrderStatusUpdated($userId: String!) {
+    orderStatusUpdated(userId: $userId) {
+      id
+      status
+      updatedAt
+      # add other fields if needed
+    }
+  }
+`;

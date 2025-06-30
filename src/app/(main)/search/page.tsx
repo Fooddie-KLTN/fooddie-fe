@@ -15,6 +15,9 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import FoodCard from "../_components/food-card";
+import { useSearchParams } from "next/navigation";
+import { CameraIcon } from "lucide-react";
+import ImageSearchModal from "../_components/image-search";
 
 const priceRanges = [
   { label: "Dưới 50.000đ", value: "under50", min: 0, max: 50000 },
@@ -33,7 +36,10 @@ const radiusOptions = [
 ];
 
 export default function FoodSearchPage() {
-  const [search, setSearch] = useState("");
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get("search") || "";
+
+  const [search, setSearch] = useState(initialSearch);
   const debouncedSearch = useDebounce(search, 400);
 
   const [foods, setFoods] = useState<FoodPreview[]>([]);
@@ -44,6 +50,7 @@ export default function FoodSearchPage() {
   const [radius, setRadius] = useState(1000);
   const [loading, setLoading] = useState(false);
   const [showingAll, setShowingAll] = useState(true); // Start with showing all
+  const [openImageModal, setOpenImageModal] = useState(false);
 
   // Price filter logic
   const minPrice = useMemo(() => {
@@ -206,12 +213,23 @@ export default function FoodSearchPage() {
       <h1 className="text-2xl font-bold mb-4">Tìm kiếm món ăn</h1>
       
       <div className="mb-6 flex gap-2 flex-wrap">
-        <Input
-          className="border rounded px-3 py-2 w-full max-w-md"
-          placeholder="Nhập tên món ăn hoặc nhà hàng..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+        <div className="relative w-full max-w-md">
+          <Input
+            className="border rounded px-3 py-2 w-full pr-10"
+            placeholder="Nhập tên món ăn hoặc nhà hàng..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+          <button
+            type="button"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-orange-100 transition-colors"
+            title="Tìm kiếm bằng hình ảnh"
+            onClick={() => setOpenImageModal(true)}
+            tabIndex={0}
+          >
+            <CameraIcon className="h-5 w-5 text-orange-500" />
+          </button>
+        </div>
         <Button 
           onClick={handleShowAll}
           variant="outline"
@@ -297,6 +315,8 @@ export default function FoodSearchPage() {
             ))}
           </div>
         </main>
+                  {/* Image search modal */}
+                  <ImageSearchModal open={openImageModal} onClose={() => setOpenImageModal(false)} />
       </div>
     </div>
   );

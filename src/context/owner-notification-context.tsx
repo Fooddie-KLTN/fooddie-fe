@@ -1,18 +1,21 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { useSubscription } from '@apollo/client';
 import { ORDER_CREATED_SUBSCRIPTION } from '@/lib/graphql/subcriptions/orderSubcriptions';
-import { Order } from '@/interface';
+import { MESSAGE_SENT_SUBSCRIPTION } from '@/lib/graphql/subcriptions/messengerSubscriptions';
 import { useAuth } from '@/context/auth-context';
+import { OwnerNotification } from '@/interface';
+import { apiRequest } from "@/api/base-api";
 
 interface OwnerNotificationContextType {
-  notifications: Order[];
+  notifications: OwnerNotification[];
   clearNotifications: () => void;
-  markAsRead: (orderId: string) => void;
+  markAsRead: (id: string) => void;
   unreadCount: number;
-  readOrderIds: Set<string>; // Thêm dòng này
+  readIds: Set<string>;
 }
 
 const OwnerNotificationContext = createContext<OwnerNotificationContextType>({
@@ -20,7 +23,7 @@ const OwnerNotificationContext = createContext<OwnerNotificationContextType>({
   clearNotifications: () => {},
   markAsRead: () => {},
   unreadCount: 0,
-  readOrderIds: new Set(), // Thêm dòng này
+  readIds: new Set(),
 });
 
 interface OwnerNotificationProviderProps {
@@ -29,12 +32,15 @@ interface OwnerNotificationProviderProps {
 }
 
 export function OwnerNotificationProvider({ children, restaurantId }: OwnerNotificationProviderProps) {
-  const [notifications, setNotifications] = useState<Order[]>([]);
-  const [readOrderIds, setReadOrderIds] = useState<Set<string>>(new Set());
+  const [notifications, setNotifications] = useState<OwnerNotification[]>([]);
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [conversationIds, setConversationIds] = useState<string[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { user } = useAuth();
+  const ownerId = user?.id; // Always use this for ownerId
+  const { getToken } = useAuth();
 
-  // Initialize notification sound
+  // Notification sound
   useEffect(() => {
     if (typeof window !== 'undefined') {
       audioRef.current = new Audio('/sounds/receive.mp3');
@@ -42,54 +48,96 @@ export function OwnerNotificationProvider({ children, restaurantId }: OwnerNotif
     }
   }, []);
 
-  // Subscribe to new orders only if user is authenticated and has restaurantId
-  const { data, loading, error } = useSubscription(ORDER_CREATED_SUBSCRIPTION, {
+  // Order notifications
+  useSubscription(ORDER_CREATED_SUBSCRIPTION, {
     variables: { restaurantId: restaurantId || '' },
     skip: !user || !restaurantId,
     onData: ({ data }) => {
-      if (data?.data?.orderCreated) {
-        const newOrder = data.data.orderCreated;
-        
-        // Play notification sound
-        if (audioRef.current) {
-          audioRef.current.play().catch(e => console.log('Could not play sound:', e));
-        }
-
-        // Add new order to notifications
-        setNotifications(prev => {
-          const exists = prev.some(order => order.id === newOrder.id);
-          if (!exists) {
-            return [newOrder, ...prev.slice(0, 9)]; // Keep only last 10 notifications
-          }
-          return prev;
-        });
+      const order = data?.data?.orderCreated;
+      if (order) {
+        setNotifications(prev => [
+          {
+            id: order.id,
+            type: "order",
+            createdAt: order.createdAt,
+            total: order.total || 0,
+            user: order.user,
+            orderDetails: order.orderDetails,
+          },
+          ...prev,
+        ]);
+        if (audioRef.current) audioRef.current.play().catch(() => {});
       }
     },
   });
 
+
+  useEffect(() => {
+    async function fetchConversationIds() {
+      try {
+        const token = await getToken(); 
+        if (!token) return;
+        const ids = await apiRequest<string[]>(
+          "/messenger/conversation-ids",
+          "GET",
+          { token }
+        );
+        console.log(ids)
+        setConversationIds(ids);
+      } catch (err) {
+        console.error("Failed to fetch conversation IDs", err);
+      }
+    }
+    fetchConversationIds();
+  }, [ user]);
+
   const clearNotifications = () => {
     setNotifications([]);
-    setReadOrderIds(new Set());
+    setReadIds(new Set());
   };
 
-  const markAsRead = (orderId: string) => {
-    setReadOrderIds(prev => new Set(prev).add(orderId));
+  const markAsRead = (id: string) => {
+    setReadIds(prev => new Set(prev).add(id));
   };
 
-  const unreadCount = notifications.filter(order => !readOrderIds.has(order.id)).length;
+  const unreadCount = notifications.filter(n => !readIds.has(n.id)).length;
 
   return (
-    <OwnerNotificationContext.Provider
-      value={{
-        notifications,
-        clearNotifications,
-        markAsRead,
-        unreadCount,
-        readOrderIds, // Thêm dòng này
-      }}
-    >
-      {children}
-    </OwnerNotificationContext.Provider>
+    <>
+      {conversationIds.map((id) => (
+        <MessageSubscription
+          key={id}
+          conversationId={id}
+          ownerId={ownerId}
+          audioRef={audioRef}
+          onMessage={(msg) => {
+            // Only push notification if the sender is NOT the owner/user
+            if (msg.sender.id === ownerId) return;
+            setNotifications((prev) => [
+              {
+                id: msg.id,
+                type: "message",
+                createdAt: msg.createdAt,
+                content: msg.content,
+                sender: typeof msg.sender === "string" ? "" : msg.sender.name,
+              },
+              ...prev,
+            ]);
+          }}
+        />
+      ))}
+      <OwnerNotificationContext.Provider
+        value={{
+          notifications,
+          clearNotifications,
+          markAsRead,
+          unreadCount,
+          readIds,
+        }}
+      >
+        {children}
+      </OwnerNotificationContext.Provider>
+    </>
   );
 }
 
@@ -100,3 +148,28 @@ export const useOwnerNotification = () => {
   }
   return context;
 };
+
+function MessageSubscription({
+  conversationId,
+  ownerId,
+  onMessage,
+  audioRef,
+}: {
+  conversationId: string;
+  ownerId?: string; // still optional, but always passed from user?.id
+  onMessage: (msg: any) => void;
+  audioRef: React.RefObject<HTMLAudioElement | null>;
+}) {
+  useSubscription(MESSAGE_SENT_SUBSCRIPTION, {
+    variables: { conversationId },
+    skip: !conversationId,
+    onData: ({ data }) => {
+      const msg = data?.data?.messageSent;
+      if (msg && msg.sender.id !== ownerId) {
+        onMessage(msg);
+        if (audioRef.current) audioRef.current.play().catch(() => {});
+      }
+    },
+  });
+  return null;
+}

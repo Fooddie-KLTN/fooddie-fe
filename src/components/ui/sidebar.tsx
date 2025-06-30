@@ -12,7 +12,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import {
   BellRingIcon,
   ChevronDownIcon,
-  FileTextIcon,
   LibraryBigIcon,
   LogOutIcon,
   MenuIcon,
@@ -30,7 +29,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import "../../styles/globals.css";
-import NavbarBrand from "./navigation/navbar-brand";
+import NavbarBrand from "../../app/(main)/_components/navigation/navbar-brand";
 
 // Interface for navigation tabs
 interface Tab {
@@ -77,11 +76,6 @@ const tabs: Tab[] = [
     label: "Quản lý danh mục",
     icon: LibraryBigIcon,
     path: "/categories",
-  },
-  {
-    label: "Quản lý đơn hàng",
-    icon: FileTextIcon,
-    path: "/orders",
   },
   {
     label: "Quản lý shipper",

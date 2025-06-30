@@ -337,3 +337,26 @@ export interface SendMessageDto {
   replyToMessageId?: string;
   metadata?: any;
 }
+
+export interface Notification {
+  id: string;
+  description?: string | null;
+  content?: string | null;
+  receiveUser?: string | null;
+  createdAt: string; // or Date, but your BE returns ISO string
+  isRead?: boolean | null;
+  type?: string | null;
+}
+
+export type OwnerNotification =
+  | ({
+      type: "order";
+      total: number;
+      user?: { name: string };
+      orderDetails?: { length: number };
+    } & { id: string; createdAt: string })
+  | ({
+      type: "message";
+      content: string;
+      sender: string;
+    } & { id: string; createdAt: string });

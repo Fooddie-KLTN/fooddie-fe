@@ -9,6 +9,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { useSubscription } from '@apollo/client';
 import { MESSAGE_SENT_SUBSCRIPTION, MESSAGES_READ_SUBSCRIPTION } from '@/lib/graphql/subcriptions/messengerSubscriptions';
+import { Textarea } from '@/components/ui/textarea';
 
 const MessengerPage = () => {
   const { user, token } = useAuth();
@@ -505,7 +506,7 @@ const MessengerPage = () => {
                   <div className="p-4 border-t border-gray-200 bg-white">
                     <div className="flex space-x-4">
                       <div className="flex-1">
-                        <textarea
+                        <Textarea
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
                           onKeyPress={handleKeyPress}

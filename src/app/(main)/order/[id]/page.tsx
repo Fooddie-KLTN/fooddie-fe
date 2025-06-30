@@ -4,14 +4,14 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { adminService } from "@/api/admin";
-import { 
-  Loader2, 
-  ArrowLeft, 
-  Package, 
-  MapPin, 
-  Clock, 
-  User, 
-  Store, 
+import {
+  Loader2,
+  ArrowLeft,
+  Package,
+  MapPin,
+  Clock,
+  User,
+  Store,
   CreditCard,
   Truck,
   CheckCircle2,
@@ -29,9 +29,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import RatingModal from "./_components/ratting-modal";
 import dynamic from "next/dynamic";
 import Image from "next/image";
-
-// Import đúng type từ API
+import { useSubscription } from "@apollo/client";
+import { SHIPPER_LOCATION_SUBSCRIPTION } from "@/lib/graphql/subcriptions/shipperSubcriptions";
 import type { OrderResponse } from "@/api/admin";
+import { ORDER_STATUS_SUBSCRIPTION } from "@/lib/graphql/subcriptions/orderSubcriptions";
 
 // Map chỉ load khi client-side
 const Map = dynamic(() => import("@/components/common/map"), { ssr: false });
@@ -83,6 +84,38 @@ const formatDate = (dateString: string) => {
   });
 };
 
+// Define the ShipperLocation type (you can move this to a types file if you want)
+export interface ShipperLocation {
+  shipperId: string;
+  latitude: number;
+  longitude: number;
+  updatedAt: string; // or Date, but GraphQL usually returns ISO string
+}
+
+// --- Child component for shipper location subscription ---
+function ShipperLocationSubscriber({
+  shipperId,
+  onData,
+}: {
+  shipperId: string;
+  onData: (data: { shipperLocationUpdated: ShipperLocation }) => void;
+}) {
+  console.log("[DEBUG] ShipperLocationSubscriber mounted with shipperId:", shipperId);
+  useSubscription(SHIPPER_LOCATION_SUBSCRIPTION, {
+    variables: { shipperId },
+    skip: !shipperId,
+    onData: ({ data }) => {
+      if (data?.data?.shipperLocationUpdated) {
+        console.log("[DEBUG] ShipperLocationSubscriber received:", data.data.shipperLocationUpdated);
+        onData({ shipperLocationUpdated: data.data.shipperLocationUpdated });
+      } else {
+        console.log("[DEBUG] ShipperLocationSubscriber received no valid data:", data);
+      }
+    }
+  });
+  return null;
+}
+
 export default function OrderDetailPage() {
   const [order, setOrder] = useState<OrderResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -90,6 +123,13 @@ export default function OrderDetailPage() {
   const params = useParams();
   const orderId = params.id as string;
   const { getToken } = useAuth();
+  const { user } = useAuth();
+  const userId = user?.id;
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | undefined>(undefined);
+
+  // Track when order is fetched
+  const [orderFetched, setOrderFetched] = useState(false);
+  const [shipperLocationData, setShipperLocationData] = useState<{ shipperLocationUpdated: ShipperLocation } | null>(null);
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -97,24 +137,45 @@ export default function OrderDetailPage() {
       if (!token || !orderId) return;
 
       try {
+        console.log("[DEBUG] Fetching order with ID:", orderId);
         const res = await adminService.Order.getOrderById(token, orderId);
         setOrder(res);
       } catch (err) {
         console.error("Failed to fetch order", err);
       } finally {
         setLoading(false);
+        setOrderFetched(true); // Mark as fetched
       }
     };
 
     fetchOrder();
   }, [orderId, getToken]);
 
+  // Only subscribe after order is fetched
+  const { data: orderStatusData } = useSubscription(ORDER_STATUS_SUBSCRIPTION, {
+    variables: { userId },
+    skip: !userId || !orderFetched,
+  });
+
+
+  // Mount the shipper location subscription only when shipperId is available
+  // This ensures the subscription is always correct
+  // shipperLocationData will be updated via setShipperLocationData
+  // You can move ShipperLocationSubscriber to another file if you want to reuse it elsewhere
+  // but it's fine to keep it here if only used in this page
+
+  useEffect(() => {
+    if (shipperLocationData) {
+      console.log("[DEBUG] FE shipperLocationData state updated:", shipperLocationData);
+    }
+  }, [shipperLocationData]);
+
   const handleReviewSubmitted = () => {
     // Refresh order data after review is submitted
     const refreshOrder = async () => {
       const token = await getToken();
       if (!token || !orderId) return;
-      
+
       try {
         const res = await adminService.Order.getOrderById(token, orderId);
         setOrder(res);
@@ -122,9 +183,58 @@ export default function OrderDetailPage() {
         console.error("Failed to refresh order", err);
       }
     };
-    
+
     refreshOrder();
   };
+
+  useEffect(() => {
+    if (
+      orderStatusData?.orderStatusUpdated &&
+      order &&
+      order.id === orderStatusData.orderStatusUpdated.id &&
+      order.status !== orderStatusData.orderStatusUpdated.status // Only update if status actually changed
+    ) {
+      setOrder((prev) =>
+        prev
+          ? { ...prev, status: orderStatusData.orderStatusUpdated.status }
+          : prev
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderStatusData, order?.id]);
+
+  // Fetch order again when status changes to 'delivering'
+  useEffect(() => {
+    if (
+      orderStatusData?.orderStatusUpdated &&
+      order &&
+      order.id === orderStatusData.orderStatusUpdated.id &&
+      orderStatusData.orderStatusUpdated.status === "delivering" // <-- Only when status is delivering
+    ) {
+      const fetchOrder = async () => {
+        const token = await getToken();
+        if (!token || !orderId) return;
+        try {
+          const res = await adminService.Order.getOrderById(token, orderId);
+          setOrder(res);
+        } catch (err) {
+          console.error("Failed to fetch order after status update", err);
+        }
+      };
+      fetchOrder();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderStatusData, order?.id]);
+
+  useEffect(() => {
+    if (order) {
+      setUserLocation({
+        lat: order.address?.latitude || 0,
+        lng: order.address?.longitude || 0,
+      });
+
+    }
+  }, [order]);
 
   if (loading) {
     return (
@@ -155,6 +265,9 @@ export default function OrderDetailPage() {
 
   const statusConfig = STATUS_CONFIG[order.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.pending;
   const defaultAddress = order.user.address.find(addr => addr.isDefault) || order.user.address[0];
+
+  // Find shipper info if available
+  const shipper = order.shippingDetail?.shipper;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -197,27 +310,24 @@ export default function OrderDetailPage() {
                   {Object.entries(STATUS_CONFIG).map(([key, config], index) => {
                     const isActive = key === order.status;
                     const isPassed = Object.keys(STATUS_CONFIG).indexOf(order.status) >= index;
-                    
+
                     return (
                       <div key={key} className="flex flex-col items-center flex-1">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
-                          isActive 
-                            ? `${config.bgColor} border-transparent text-white` 
-                            : isPassed
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${isActive
+                          ? `${config.bgColor} border-transparent text-white`
+                          : isPassed
                             ? 'bg-emerald-500 border-transparent text-white'
                             : 'bg-gray-100 border-gray-300 text-gray-400'
-                        }`}>
+                          }`}>
                           {config.icon}
                         </div>
-                        <p className={`text-xs mt-2 text-center ${
-                          isActive ? 'text-emerald-600 font-medium' : 'text-gray-500'
-                        }`}>
+                        <p className={`text-xs mt-2 text-center ${isActive ? 'text-emerald-600 font-medium' : 'text-gray-500'
+                          }`}>
                           {config.label}
                         </p>
                         {index < Object.keys(STATUS_CONFIG).length - 1 && (
-                          <div className={`h-0.5 w-full mt-5 -ml-full ${
-                            isPassed ? 'bg-emerald-500' : 'bg-gray-200'
-                          }`} />
+                          <div className={`h-0.5 w-full mt-5 -ml-full ${isPassed ? 'bg-emerald-500' : 'bg-gray-200'
+                            }`} />
                         )}
                       </div>
                     );
@@ -325,10 +435,61 @@ export default function OrderDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="w-full h-[400px] rounded-xl overflow-hidden">
-                  <Map
-                    from={`${order.restaurant.address.street}, ${order.restaurant.address.ward}`}
-                    to={defaultAddress ? `${defaultAddress.street}, ${defaultAddress.ward}` : ""}
-                  />
+                  {order.shippingDetail ? (
+                    <>
+                      {order.shippingDetail.shipper?.id && (
+                        <ShipperLocationSubscriber
+                          shipperId={order.shippingDetail.shipper.id}
+                          onData={setShipperLocationData}
+                        />
+                      )}
+                      {/* Shipper Info */}
+                      {shipper && (
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                              <Truck className="w-5 h-5" />
+                              Thông tin tài xế
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="flex flex-row items-start gap-4">
+                            <div className="flex items-center gap-4 flex-1">
+                              <Avatar>
+                                <AvatarImage src={shipper.avatar} alt={shipper.name} />
+                                <AvatarFallback>{shipper.name?.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <h4 className="font-semibold">{shipper.name}</h4>
+                                <p className="text-sm text-gray-600">{shipper.phone}</p>
+                              </div>
+                            </div>
+                            <div className="flex flex-col flex-0 items-end justify-end w-fit ml-auto">
+                              <Button
+                                className="mt-2"
+                                variant="outline"
+                                onClick={() => {
+                                  // Replace this with your chat open logic
+                                  alert(`Open chat with shipper: ${shipper.name}`);
+                                }}
+                              >
+                                <MessageSquare className="w-4 h-4 mr-2" />
+                                Nhắn tin với tài xế
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+                      <Map
+                        shipperLocation={shipperLocationData?.shipperLocationUpdated}
+                        userLocation={userLocation}
+                      />
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                      <Loader2 className="animate-spin w-10 h-10 mb-4" />
+                      <p>Hệ thống đang tìm tài xế giao hàng cho bạn...</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

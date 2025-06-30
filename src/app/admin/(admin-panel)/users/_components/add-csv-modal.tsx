@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import NavbarBrand from "@/components/ui/navigation/navbar-brand";
+import NavbarBrand from "@/app/(main)/_components/navigation/navbar-brand";
 import { CloudUploadIcon } from "lucide-react";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useIsMobile } from "@/hooks/use-mobile";

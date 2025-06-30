@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useSubscription } from '@apollo/client';
 import { MESSAGE_SENT_SUBSCRIPTION, MESSAGES_READ_SUBSCRIPTION } from '@/lib/graphql/subcriptions/messengerSubscriptions';
+import { Textarea } from '@/components/ui/textarea';
 
 const RestaurantMessengerPage = () => {
   const { user, getToken } = useAuth();
@@ -49,12 +50,27 @@ const RestaurantMessengerPage = () => {
         
         // Add message to current conversation messages
         setMessages(prev => {
-          const exists = prev.some(msg => msg.id === newMsg.id);
-          if (exists) {
-            console.log('🔄 Message already exists, skipping');
+          // If the real message already exists, skip
+          if (prev.some(msg => msg.id === newMsg.id)) {
             return prev;
           }
-          console.log('✅ Adding new message to UI:', newMsg);
+          // If a temp message with the same content and sender exists, replace it
+          const hasTemp = prev.some(
+            msg =>
+              msg.id.startsWith('temp_') &&
+              msg.content === newMsg.content &&
+              msg.sender.id === newMsg.sender.id
+          );
+          if (hasTemp) {
+            return prev.map(msg =>
+              msg.id.startsWith('temp_') &&
+              msg.content === newMsg.content &&
+              msg.sender.id === newMsg.sender.id
+                ? newMsg
+                : msg
+            );
+          }
+          // Otherwise, add the new message
           return [...prev, newMsg];
         });
         
@@ -238,7 +254,7 @@ const RestaurantMessengerPage = () => {
   });
 
   return (
-    <div className="h-[calc(100vh-120px)] bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div className=" bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
       {/* Connection Error Alert */}
       {connectionError && (
         <div className="p-4 bg-yellow-50 border-b border-yellow-200">
@@ -349,9 +365,7 @@ const RestaurantMessengerPage = () => {
                           <p className="text-sm text-gray-500 truncate">
                             {conversation.lastMessage || 'Bắt đầu cuộc trò chuyện...'}
                           </p>
-                          {customer.phone && (
-                            <Phone className="h-3 w-3 text-gray-400" />
-                          )}
+
                         </div>
                       </div>
                     </div>
@@ -389,13 +403,7 @@ const RestaurantMessengerPage = () => {
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Button variant="outline" size="sm" className="flex items-center space-x-1">
-                      <Phone className="h-4 w-4" />
-                      <span>Gọi</span>
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex items-center space-x-1">
-                      <Filter className="h-4 w-4" />
-                    </Button>
+
                   </div>
                 </div>
               </div>
@@ -445,7 +453,7 @@ const RestaurantMessengerPage = () => {
               <div className="p-4 border-t border-gray-200 bg-white">
                 <div className="flex space-x-4">
                   <div className="flex-1">
-                    <textarea
+                    <Textarea
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       onKeyPress={handleKeyPress}

@@ -9,7 +9,7 @@
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MenuIcon, XIcon } from "lucide-react";
-import Brand from "../brand";
+import Brand from "../../../../components/ui/brand";
 
 interface NavbarBrandProps {
   state: boolean;
