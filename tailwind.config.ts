@@ -50,6 +50,16 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          50: "#fef7ed",
+          100: "#fdebc7",
+          200: "#fbd58a",
+          300: "#f8b84d",
+          400: "#f59e20",
+          500: "#e88308", // Your main primary color
+          600: "#d16b04",
+          700: "#ad5207",
+          800: "#8d420d",
+          900: "#74370e",
         },
         brand: {
           DEFAULT: "hsl(var(--brand))",
