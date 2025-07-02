@@ -158,11 +158,22 @@ export interface FoodDetail extends FoodPreview {
   // Full related objects
   category: Category;
   restaurant: Restaurant;
+  toppings?: Topping[]; // Optional toppings array
+
   reviews?: Review[]; // Optional reviews array
 
   totalReviews?: number; // <-- Added: total number of reviews
 }
 
+export interface Topping {
+  id: string;
+  name: string;
+  price: number | string; // Price can be a number or string
+  image?: string; // Optional image URL
+  isAvailable?: boolean; // Optional availability flag
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 /**
  * Cart item format compatible with cart context
  */
