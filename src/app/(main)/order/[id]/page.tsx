@@ -435,7 +435,7 @@ export default function OrderDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="w-full h-[400px] rounded-xl overflow-hidden">
-                  {order.shippingDetail ? (
+                  {order.shippingDetail && order.status === "delivering" ? (
                     <>
                       {order.shippingDetail.shipper?.id && (
                         <ShipperLocationSubscriber
@@ -484,11 +484,13 @@ export default function OrderDetailPage() {
                         userLocation={userLocation}
                       />
                     </>
-                  ) : (
+                  ) : ( order.status !== "completed" ?
+                    (
                     <div className="flex flex-col items-center justify-center h-full text-gray-500">
                       <Loader2 className="animate-spin w-10 h-10 mb-4" />
                       <p>Hệ thống đang tìm tài xế giao hàng cho bạn...</p>
                     </div>
+                  ) : (<></>)
                   )}
                 </div>
               </CardContent>
