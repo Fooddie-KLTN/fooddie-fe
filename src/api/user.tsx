@@ -334,6 +334,36 @@ export const userApi = {
         throw error;
       }
     },
+    
+    async calculateOrderWithCustomAddress(
+      address: {
+        street: string;
+        ward: string;
+        district: string;
+        city: string;
+        latitude: number;
+        longitude: number;
+        label?: string;
+      },
+      restaurantId: string,
+      items: { foodId: string; quantity: number }[],
+      promotionCode?: string
+    ): Promise<CalculateOrderResponse> {
+      try {
+        return await apiRequest<CalculateOrderResponse>('/orders/calculate-custom', 'POST', {
+          data: {
+            address,
+            restaurantId,
+            items,
+            promotionCode,
+          },
+        });
+      } catch (error) {
+        console.error('Order API error:', error);
+        throw error;
+      }
+    },
+    
     /**
      * Lấy danh sách đơn hàng của người dùng
      * @param {string} token - Token xác thực

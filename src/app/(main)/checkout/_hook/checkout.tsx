@@ -6,8 +6,21 @@ import { userApi } from '@/api/user';
 import { Address } from '@/interface';
 import { CalculateOrderResponse, OrderResponse } from '@/api/response.interface';
 import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 
-export const useCheckout = () => {
+interface UseCheckoutProps {
+    selectedAddressType: "saved" | "custom";
+    selectedAddress: {
+      full: string;
+      latitude?: number;
+      longitude?: number;
+    } | null;
+  }
+
+export const useCheckout =  ({ selectedAddressType, selectedAddress }: UseCheckoutProps) => {
+    const searchParams = useSearchParams();
+    const restaurantId = searchParams.get('restaurantId');
+
     const { cartItems, removeFromCart, updateQuantity, getCartItems, getTotalPrice } = useCart();
     const { user, getToken } = useAuth();
     const router = useRouter();
@@ -21,7 +34,6 @@ export const useCheckout = () => {
     const [paymentMethod, setPaymentMethod] = useState<string>('cod');
     const [showOnlineDropdown, setShowOnlineDropdown] = useState(false);
     const [orderNote, setOrderNote] = useState('');
-
     const [calculation, setCalculation] = useState<CalculateOrderResponse | null>(null);
     const [calculating, setCalculating] = useState(false);
 
@@ -29,9 +41,14 @@ export const useCheckout = () => {
 
     useEffect(() => {
         const fetchCart = async () => {
-            if (initialLoading) setLoadingCart(true);
             const items = await getCartItems();
-            setDisplayCartItems(items);
+
+            const filtered = restaurantId
+              ? items.filter(item => item.restaurant?.id === restaurantId)
+              : items;
+            
+            setDisplayCartItems(filtered);
+            
             setTotalPrice(await getTotalPrice());
             setLoadingCart(false);
             if (initialLoading) setInitialLoading(false);
@@ -64,38 +81,65 @@ export const useCheckout = () => {
     }, [user, getToken]);
     useEffect(() => {
         const calc = async () => {
-            if (
-                !selectedUserAddressId ||
-                !displayCartItems ||
-                displayCartItems.length === 0 ||
-                !displayCartItems[0]?.restaurant?.id
-            ) {
-                setCalculation(null);
-                return;
-            }
-            setCalculating(true);
-            try {
-                const items = displayCartItems.map(item => ({
-                    foodId: item.foodId || item.id,
-                    quantity: item.quantity,
-                }));
-                const result = await userApi.order.calculateOrder(
-                    selectedUserAddressId,
-                    displayCartItems[0].restaurant.id,
+          const restaurantId = displayCartItems[0]?.restaurant?.id;
+      
+          if (
+            !restaurantId ||
+            displayCartItems.length === 0 ||
+            (selectedAddressType === "saved" && !selectedUserAddressId) ||
+            (selectedAddressType === "custom" && !selectedAddress?.full)
+          ) {
+            setCalculation(null);
+            return;
+          }
+      
+          setCalculating(true);
+      
+          try {
+            const items = displayCartItems.map(item => ({
+              foodId: item.foodId || item.id,
+              quantity: item.quantity,
+            }));
+      
+            const payload =
+              selectedAddressType === "saved"
+                ? await userApi.order.calculateOrder(
+                    selectedUserAddressId!,
+                    restaurantId,
                     items,
                     promotionCode || undefined
-                );
-                setCalculation(result);
-            } catch (e) {
-                if (e instanceof Error) {
-                    console.error('Failed to calculate order:', e.message);
-                }
-                setCalculation(null);
-            }
-            setCalculating(false);
+                  )
+                : await userApi.order.calculateOrderWithCustomAddress(
+                    {
+                      ...parseAddress(selectedAddress!.full),
+                      latitude: selectedAddress!.latitude ?? 0,  
+                      longitude: selectedAddress!.longitude ?? 0,
+                      label: "Địa chỉ mới",
+                    },
+                    restaurantId,
+                    items,
+                    promotionCode || undefined
+                  )
+                  
+      
+            setCalculation(payload);
+          } catch (e) {
+            console.error("Failed to calculate order:", e);
+            setCalculation(null);
+          }
+      
+          setCalculating(false);
         };
+      
         calc();
-    }, [displayCartItems, selectedUserAddressId, promotionCode]); // Add promotionCode here
+      }, [
+        displayCartItems,
+        selectedUserAddressId,
+        selectedAddress,
+        selectedAddressType,
+        promotionCode,
+      ]);
+      
 
     const handleSetDefaultAddress = (addressId: string) => {
         setUserAddresses(prev =>
@@ -115,23 +159,47 @@ export const useCheckout = () => {
         removeFromCart(id);
     };
 
-    const handleOrder = async () => {
+    function parseAddress(full: string) {
+        const parts = full.split(',').map(p => p.trim());
+        return {
+          street: parts[0] || '',
+          ward: parts[1] && parts[2] ? `${parts[1]}, ${parts[2]}` : (parts[1] || ''),
+          district: parts[3] || '',
+          city: parts[4] || '',
+        };
+      }
+      
+      const handleOrder = async (
+        selectedAddressType: "saved" | "custom",
+        selectedAddress: { full: string; latitude?: number; longitude?: number } | null
+      ) => {
+      
         if (!user || !selectedUserAddressId || displayCartItems.length === 0) return;
 
         const orderPayload = {
             userId: user.id,
             restaurantId: displayCartItems[0]?.restaurant?.id,
-            addressId: selectedUserAddressId,
             total: totalPrice,
             note: orderNote,
             paymentMethod,
+            ...(selectedAddressType === "saved"
+              ? { addressId: selectedUserAddressId }
+              : selectedAddress && {
+                  address: {
+                    ...parseAddress(selectedAddress.full),
+                    latitude: selectedAddress.latitude,
+                    longitude: selectedAddress.longitude,
+                    label: "Địa chỉ mới",
+                  }
+                }
+            ),
             orderDetails: displayCartItems.map(item => ({
-                foodId: item.id,
-                quantity: String(item.quantity),
-                price: String(item.price),
-                note: item.note || '',
+              foodId: item.id,
+              quantity: String(item.quantity),
+              price: String(item.price),
+              note: item.note || '',
             })),
-        };
+          };
 
         try {
             const token = await getToken();

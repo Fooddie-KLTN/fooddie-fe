@@ -9,8 +9,16 @@ import { OrderSummary } from './_components/order-summary';
 import { EmptyCart } from './_components/emty-cart';
 import { useEffect, useState } from "react";
 import { GuestPromotionResponse, guestService } from "@/api/guest";
+import MapboxSearch from '@/components/mapbox-search';
 
 export default function CheckoutPage() {
+  const [promotions, setPromotions] = useState<GuestPromotionResponse[]>([]);
+  const [selectedAddressType, setSelectedAddressType] = useState<"saved" | "custom">("saved");
+  const [selectedAddress, setSelectedAddress] = useState<{
+    full: string;
+    latitude?: number;
+    longitude?: number;
+  } | null>(null);
   const {
     displayCartItems,
     initialLoading,
@@ -31,9 +39,10 @@ export default function CheckoutPage() {
     calculating,
     promotionCode,
     setPromotionCode,
-  } = useCheckout();
-
-  const [promotions, setPromotions] = useState<GuestPromotionResponse[]>([]);
+  } = useCheckout({
+    selectedAddressType,
+    selectedAddress,
+  });
 
 
   useEffect(() => {
@@ -65,11 +74,54 @@ export default function CheckoutPage() {
               onRemoveFromCart={handleRemoveFromCart}
               formatPrice={formatPrice}
             />
-            <AddressSection
-              userAddresses={userAddresses}
-              selectedUserAddressId={selectedUserAddressId}
-              onSetDefaultAddress={handleSetDefaultAddress}
-            />
+          {/* Address Selector */}
+          <div className="space-y-4">
+            <div className="my-4">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="addressType"
+                  value="saved"
+                  checked={selectedAddressType === "saved"}
+                  onChange={() => setSelectedAddressType("saved")}
+                />
+                Dùng địa chỉ đã lưu
+              </label>
+              <label className="flex items-center gap-2 text-sm mt-1">
+                <input
+                  type="radio"
+                  name="addressType"
+                  value="custom"
+                  checked={selectedAddressType === "custom"}
+                  onChange={() => setSelectedAddressType("custom")}
+                />
+                Nhập địa chỉ mới
+              </label>
+            </div>
+
+            {selectedAddressType === "saved" && (
+              <AddressSection
+                userAddresses={userAddresses}
+                selectedUserAddressId={selectedUserAddressId}
+                onSetDefaultAddress={handleSetDefaultAddress}
+              />
+            )}
+
+            {selectedAddressType === "custom" && (
+              <div className="mt-4 space-y-2">
+                <MapboxSearch
+                  onAddressSelect={(address) => setSelectedAddress(address)}
+                  placeholder="Nhập địa chỉ giao hàng mới..."
+                />
+                {selectedAddress && (
+                  <div className="text-sm text-muted-foreground">
+                    Đã chọn: {selectedAddress.full}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
             <PaymentSection
               paymentMethod={paymentMethod}
               showOnlineDropdown={showOnlineDropdown}
@@ -91,7 +143,7 @@ export default function CheckoutPage() {
               total={calculation?.total ?? 0}
               calculating={calculating}
               selectedUserAddressId={selectedUserAddressId}
-              onOrder={handleOrder}
+              onOrder={() => handleOrder(selectedAddressType, selectedAddress)}
               formatPrice={formatPrice}
               promotions={promotions}
               selectedPromotionCode={promotionCode}

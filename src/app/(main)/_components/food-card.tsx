@@ -45,7 +45,7 @@ export default function FoodCard({ food, formatPrice }: FoodCardProps) {
         : Number(food.price);
 
     return (
-        <Card className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer w-72 h-96 flex flex-col">
+        <Card className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer h-full flex flex-col">
             <div className="relative h-48 flex-shrink-0">
                 <Image
                     src={food.image}

@@ -36,6 +36,7 @@ import { NOTIFICATION_ADDED_SUBSCRIPTION } from "@/lib/graphql/subcriptions/noti
 import { useEffect, useRef, useState } from "react";
 import type { Notification } from "@/interface"; // adjust path as needed
 import { apiRequest } from "@/api/base-api"; // adjust path if needed
+import { useCartDrawer } from "@/context/cart-drawer-context";
 
 // Notification type
 type NotificationItem = {
@@ -65,7 +66,7 @@ export default function UserActions({ openModal }: UserActionsProps) {
   // Get cart context
   const { getToken, logout, user} = useAuth();
   const { cartItems } = useCart(); // Change 'cart' to 'cartItems'
-
+  const { toggleCartDrawer } = useCartDrawer();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -180,10 +181,10 @@ return (
             <HeartIcon className="h-5 w-5" />
           </Button>
 
-          {/* Cart */}
-          <Link
+          {/* Cart button */}
+          <button
             className="relative bg-transparent hover:bg-primary/10 p-2 rounded-full transition-colors"
-            href="/checkout"
+            onClick={() => toggleCartDrawer()}
             aria-label={`Giỏ hàng (${cartItems.length})`}
           >
             <ShoppingCartIcon />
@@ -192,7 +193,7 @@ return (
                 {cartItems.length}
               </span>
             )}
-          </Link>
+          </button>
 
           {/* Notifications */}
           <div className="relative hidden md:block">

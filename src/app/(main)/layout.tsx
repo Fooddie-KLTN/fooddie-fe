@@ -23,6 +23,8 @@ import { HomeIcon, ChevronRightIcon } from "lucide-react";
 import { ApolloProvider } from '@apollo/client';
 import { apolloClient } from '@/lib/graphql/apolloClient';
 import Navbar from "./_components/navigation/navbar";
+import CartDrawer from "./_components/cart-drawer";
+import { CartDrawerProvider } from "@/context/cart-drawer-context";
 
 // Enhanced path mapping for breadcrumbs with more detailed routes
 const pathMap: Record<string, { label: string; parent?: string; icon?: React.ReactNode }> = {
@@ -164,10 +166,11 @@ export default function RootLayout({
                     <ApolloProvider client={apolloClient}>
       <NotificationProvider>
         <AuthModalProvider>
-          <CartProvider>
+        <CartProvider>
+          <CartDrawerProvider>
             <GeoLocationProvider>
               <Navbar />
-              {/* Enhanced breadcrumb with better styling */}
+
               {breadcrumbs.length > 0 && (
                 <div className="border-b bg-gray-50/50 backdrop-blur-sm sticky top-24 z-40">
                   <div className="container mx-auto px-4 py-3">
@@ -208,14 +211,13 @@ export default function RootLayout({
                   </div>
                 </div>
               )}
-              <main className="min-h-screen">
 
-                {children}
-
-              </main>
+              <main className="min-h-screen">{children}</main>
               <ChatWidget />
+              <CartDrawer /> {/* ✅ đặt ở cuối layout */}
             </GeoLocationProvider>
-          </CartProvider>
+          </CartDrawerProvider>
+        </CartProvider>
         </AuthModalProvider>
 
       </NotificationProvider>
