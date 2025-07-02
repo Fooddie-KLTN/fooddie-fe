@@ -168,12 +168,13 @@ export default function CreateFoodPage() {
                 imageUrl = imageUrls[0];
             }
 
-            await userApi.food.createFood(token, {
+            const result = await userApi.food.createFood(token, {
                 ...form,
                 restaurantId,
                 image: imageUrl,
                 imageUrls,
             });
+            console.log("Food created successfully:", result);
 
             router.push(`/restaurant/${restaurantId}/edit/food-list`);
         } catch (err) {
