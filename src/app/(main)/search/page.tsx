@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { guestService } from "@/api/guest";
-import { FoodPreview, Category } from "@/interface";
+import { FoodPreview, Category, Restaurant } from "@/interface";
 import { useDebounce } from "@/hooks/use-debounce";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import FoodCard from "../_components/food-card";
 import { useSearchParams } from "next/navigation";
 import { CameraIcon } from "lucide-react";
 import ImageSearchModal from "../_components/image-search";
+import RestaurantWithFoods from "../_components/restaurant-with-foods";
 
 const priceRanges = [
   { label: "Dưới 50.000đ", value: "under50", min: 0, max: 50000 },
@@ -61,7 +62,7 @@ export default function FoodSearchPage() {
     if (selectedPrices.length === 0) return undefined;
     return Math.max(...selectedPrices.map(val => priceRanges.find(r => r.value === val)?.max ?? Infinity));
   }, [selectedPrices]);
-
+  
   // Check if all categories are selected
   const isAllCategoriesSelected = selectedCategories.length === categories.length && categories.length > 0;
 
@@ -70,6 +71,11 @@ export default function FoodSearchPage() {
     return price.toLocaleString("vi-VN", { style: "currency", currency: "VND" });
   };
 
+  useEffect(() => {
+    if (foods.length > 0) {
+      console.log("🧾 First food item:", foods[0]);
+    }
+  }, [foods]);
   // Fetch categories and initial foods
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -175,7 +181,15 @@ export default function FoodSearchPage() {
       minPrice,
       maxPrice === Infinity ? undefined : maxPrice
     )
-      .then(res => setFoods(res.items ?? []))
+    .then(res => {
+      const nameSearch = debouncedSearch.trim().toLowerCase();
+      const matched = (res.items ?? []).filter(food =>
+        food.name.toLowerCase().includes(nameSearch) ||
+        food.description?.toLowerCase().includes(nameSearch)
+      );
+      setFoods(matched);
+    })
+    
       .finally(() => setLoading(false));
   }, [debouncedSearch, selectedCategories, minPrice, maxPrice, radius, showingAll, allFoods, categories.length]);
 
@@ -207,6 +221,24 @@ export default function FoodSearchPage() {
     setSearch("");
     fetchAllFoods();
   };
+
+  const groupedFoods = useMemo(() => {
+    const map = new Map<string, { restaurant: Restaurant; foods: FoodPreview[] }>();
+  
+    for (const food of foods) {
+      const rid = food.restaurant?.id;
+      if (!rid) continue;
+  
+      if (!map.has(rid)) {
+        map.set(rid, { restaurant: food.restaurant, foods: [food] });
+      } else {
+        map.get(rid)!.foods.push(food);
+      }
+    }
+  
+    return Array.from(map.values()).sort((a, b) => b.foods.length - a.foods.length);
+  }, [foods]);
+  
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -305,14 +337,14 @@ export default function FoodSearchPage() {
               </Button>
             </div>
           )}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
-            {foods.map(food => (
-              <FoodCard
-                key={food.id}
-                food={food}
-                formatPrice={formatPrice}
-              />
-            ))}
+          <div className="flex flex-wrap md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
+          {groupedFoods.map(group => (
+            <RestaurantWithFoods
+              key={group.restaurant.id}
+              restaurant={group.restaurant}
+              foods={group.foods}
+            />
+          ))} 
           </div>
         </main>
                   {/* Image search modal */}
