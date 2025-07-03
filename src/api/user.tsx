@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Restaurant, FoodDetail, UserProfile, Order, Message, Conversation, CreateConversationDto, SendMessageDto } from "@/interface";
+import { Restaurant, FoodDetail, UserProfile, Order, Message, Conversation, CreateConversationDto, SendMessageDto, Topping } from "@/interface";
 import { apiRequest } from "./base-api";
 import { CalculateOrderResponse, OrderResponse, PaginatedResponse } from "./response.interface";
 
@@ -242,13 +242,13 @@ export const userApi = {
       if (!res.ok) throw new Error("Failed to fetch top foods");
       return await res.json();
     },
-      async getMyChartData(token: string) {
-    return await apiRequest<{ days: string[]; orderCounts: number[]; revenues: number[] }>(
-      "/restaurants/my/chart-data",
-      "GET",
-      { token }
-    );
-  },
+    async getMyChartData(token: string) {
+      return await apiRequest<{ days: string[]; orderCounts: number[]; revenues: number[] }>(
+        "/restaurants/my/chart-data",
+        "GET",
+        { token }
+      );
+    },
   },
   food: {
     async getFoodsByRestaurant(restaurantId: string) {
@@ -304,6 +304,67 @@ export const userApi = {
         throw error;
       }
     },
+    /**
+      * Add a topping to a food
+      * @param {string} token - Auth token
+      * @param {string} foodId - Food ID
+      * @param {Topping} data - Topping data
+      * @returns {Promise<Topping>}
+      */
+    async addTopping(token: string, foodId: string, data: Topping): Promise<Topping> {
+      try {
+        return await apiRequest<Topping>(`/foods/${foodId}/toppings`, "POST", { token, data });
+      } catch (error) {
+        console.error("Add topping API error:", error);
+        throw error;
+      }
+    },
+
+    /**
+     * Update a topping
+     * @param {string} token - Auth token
+     * @param {string} toppingId - Topping ID
+     * @param {Topping} data - Topping update data
+     * @returns {Promise<Topping>}
+     */
+    async updateTopping(token: string, toppingId: string, data: Topping): Promise<Topping> {
+      try {
+        return await apiRequest<Topping>(`/foods/toppings/${toppingId}`, "PUT", { token, data });
+      } catch (error) {
+        console.error("Update topping API error:", error);
+        throw error;
+      }
+    },
+
+    /**
+     * Remove a topping
+     * @param {string} token - Auth token
+     * @param {string} toppingId - Topping ID
+     * @returns {Promise<{ success: boolean }>}
+     */
+    async removeTopping(token: string, toppingId: string): Promise<{ success: boolean }> {
+      try {
+        return await apiRequest<{ success: boolean }>(`/foods/toppings/${toppingId}`, "DELETE", { token });
+      } catch (error) {
+        console.error("Remove topping API error:", error);
+        throw error;
+      }
+    },
+
+    /**
+     * Get toppings for a food
+     * @param {string} foodId - Food ID
+     * @returns {Promise<Topping[]>}
+     */
+    async getToppings(foodId: string): Promise<Topping[]> {
+      try {
+        return await apiRequest<Topping[]>(`/foods/${foodId}/toppings`, "GET");
+      } catch (error) {
+        console.error("Get toppings API error:", error);
+        throw error;
+      }
+    },
+
   },
   order: {
     /**
@@ -389,16 +450,16 @@ export const userApi = {
      * @return {Promise<PaginatedResponse<Order>>} - Danh sách đơn hàng của nhà hàng
      */
     async getOrdersByMyRestaurant(
-      token: string, 
-      page: number = 1, 
-      pageSize: number = 10, 
+      token: string,
+      page: number = 1,
+      pageSize: number = 10,
       status?: string
     ): Promise<PaginatedResponse<Order>> {
       try {
         const queryString = `page=${page}&pageSize=${pageSize}${status ? `&status=${status}` : ''}`;
         return await apiRequest<PaginatedResponse<Order>>(
-          `/orders/restaurant/my?${queryString}`, 
-          'GET', 
+          `/orders/restaurant/my?${queryString}`,
+          'GET',
           { token }
         );
       } catch (error) {
@@ -415,9 +476,9 @@ export const userApi = {
      */
     async updateOrderStatus(token: string, orderId: string, status: string): Promise<Order> {
       try {
-        return await apiRequest<Order>(`/orders/${orderId}/status`, 'PUT', { 
-          token, 
-          data: { status } 
+        return await apiRequest<Order>(`/orders/${orderId}/status`, 'PUT', {
+          token,
+          data: { status }
         });
       } catch (error) {
         console.error('Update order status API error:', error);
@@ -466,9 +527,9 @@ export const userApi = {
      * @param {string} foodId - ID món ăn
      * @returns {Promise<{hasReviewed: boolean}>} - Trạng thái đã đánh giá
      */
-    async checkFoodReviewStatus(token: string, foodId: string): Promise<{hasReviewed: boolean}> {
+    async checkFoodReviewStatus(token: string, foodId: string): Promise<{ hasReviewed: boolean }> {
       try {
-        return await apiRequest<{hasReviewed: boolean}>(`/reviews/food/${foodId}/status`, 'GET', { token });
+        return await apiRequest<{ hasReviewed: boolean }>(`/reviews/food/${foodId}/status`, 'GET', { token });
       } catch (error) {
         console.error('Check food review status API error:', error);
         throw error;
@@ -503,17 +564,17 @@ export const userApi = {
      * @returns {Promise<PaginatedResponse<Conversation>>} - Paginated conversations
      */
     async getUserConversations(
-      token: string, 
-      page: number = 1, 
+      token: string,
+      page: number = 1,
       pageSize: number = 10
     ): Promise<PaginatedResponse<Conversation>> {
       try {
         return await apiRequest<PaginatedResponse<Conversation>>(
-          '/messenger/conversations', 
-          'GET', 
-          { 
-            token, 
-            query: { page, pageSize } 
+          '/messenger/conversations',
+          'GET',
+          {
+            token,
+            query: { page, pageSize }
           }
         );
       } catch (error) {
@@ -546,18 +607,18 @@ export const userApi = {
      * @returns {Promise<PaginatedResponse<Message>>} - Paginated messages
      */
     async getConversationMessages(
-      token: string, 
-      conversationId: string, 
-      page: number = 1, 
+      token: string,
+      conversationId: string,
+      page: number = 1,
       pageSize: number = 20
     ): Promise<PaginatedResponse<Message>> {
       try {
         return await apiRequest<PaginatedResponse<Message>>(
-          `/messenger/conversations/${conversationId}/messages`, 
-          'GET', 
-          { 
-            token, 
-            query: { page, pageSize } 
+          `/messenger/conversations/${conversationId}/messages`,
+          'GET',
+          {
+            token,
+            query: { page, pageSize }
           }
         );
       } catch (error) {
@@ -572,11 +633,11 @@ export const userApi = {
      * @param {string} conversationId - Conversation ID
      * @returns {Promise<{success: boolean}>} - Success response
      */
-    async markMessagesAsRead(token: string, conversationId: string): Promise<{success: boolean}> {
+    async markMessagesAsRead(token: string, conversationId: string): Promise<{ success: boolean }> {
       try {
-        return await apiRequest<{success: boolean}>(
-          `/messenger/conversations/${conversationId}/read`, 
-          'PUT', 
+        return await apiRequest<{ success: boolean }>(
+          `/messenger/conversations/${conversationId}/read`,
+          'PUT',
           { token }
         );
       } catch (error) {
@@ -591,11 +652,11 @@ export const userApi = {
      * @param {string} messageId - Message ID
      * @returns {Promise<{success: boolean}>} - Success response
      */
-    async deleteMessage(token: string, messageId: string): Promise<{success: boolean}> {
+    async deleteMessage(token: string, messageId: string): Promise<{ success: boolean }> {
       try {
-        return await apiRequest<{success: boolean}>(
-          `/messenger/messages/${messageId}`, 
-          'DELETE', 
+        return await apiRequest<{ success: boolean }>(
+          `/messenger/messages/${messageId}`,
+          'DELETE',
           { token }
         );
       } catch (error) {
@@ -613,8 +674,8 @@ export const userApi = {
     async toggleBlockConversation(token: string, conversationId: string): Promise<Conversation> {
       try {
         return await apiRequest<Conversation>(
-          `/messenger/conversations/${conversationId}/block`, 
-          'PUT', 
+          `/messenger/conversations/${conversationId}/block`,
+          'PUT',
           { token }
         );
       } catch (error) {
@@ -628,9 +689,9 @@ export const userApi = {
      * @param {string} token - Authentication token
      * @returns {Promise<{unreadCount: number}>} - Unread count
      */
-    async getUnreadMessageCount(token: string): Promise<{unreadCount: number}> {
+    async getUnreadMessageCount(token: string): Promise<{ unreadCount: number }> {
       try {
-        return await apiRequest<{unreadCount: number}>('/messenger/unread-count', 'GET', { token });
+        return await apiRequest<{ unreadCount: number }>('/messenger/unread-count', 'GET', { token });
       } catch (error) {
         console.error('Get unread count API error:', error);
         throw error;
