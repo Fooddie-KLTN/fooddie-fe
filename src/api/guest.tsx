@@ -1,5 +1,5 @@
 import { apiRequest } from "./base-api";
-import { FoodPreview, FoodDetail, Restaurant, Category, PromotionType, Review } from "../interface";
+import { FoodPreview, FoodDetail, Restaurant, Category, PromotionType, Review, Topping } from "../interface";
 import { PaginatedResponse } from "./response.interface";
 
 // Add promotion interface for guest service
@@ -128,6 +128,10 @@ export const guestService = {
             );
         },
             
+        async getToppingsByFoodId(foodId: string) {
+            return apiRequest<Topping[]>(`/foods/${foodId}/toppings`, 'GET');
+          },
+        
         async searchFoodsByName(
             name: string,
             page: number = 1,

@@ -4,7 +4,7 @@ import { useCart } from "@/context/cart-context";
 import { useCartDrawer } from "@/context/cart-drawer-context";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import CartGroupByRestaurant from "./grouped-cart";
-import { Button } from "@/components/ui/button";
+import { X } from "lucide-react";
 
 export default function CartDrawer() {
   const { isOpen, closeCartDrawer } = useCartDrawer();
@@ -12,8 +12,19 @@ export default function CartDrawer() {
 
   return (
     <Sheet open={isOpen} onOpenChange={closeCartDrawer}>
-      <SheetContent side="right" className="w-[90vw] md:w-[400px] p-6">
-        <h2 className="text-xl font-semibold mb-4 text-brown-800">Giỏ hàng</h2>
+      <SheetContent
+        side="right"
+        className="w-[90vw] md:w-[400px] p-6 overflow-y-auto hide-scrollbar relative"
+      >
+        {/* Header tùy chỉnh */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-brown-800">Giỏ hàng</h2>
+          <button onClick={closeCartDrawer} className="text-gray-600 hover:text-black">
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Nội dung giỏ hàng */}
         {groupedCartItems.length === 0 ? (
           <p className="text-sm text-gray-600">Không có món nào trong giỏ.</p>
         ) : (
@@ -25,19 +36,6 @@ export default function CartDrawer() {
                 items={group.items}
               />
             ))}
-          </div>
-        )}
-
-        {groupedCartItems.length > 0 && (
-          <div className="mt-8 border-t pt-4">
-            <Button
-              className="w-full bg-primary text-white hover:bg-primary/80"
-              onClick={() => {
-                // optional: navigate to checkout for specific restaurant
-              }}
-            >
-              Tiến hành đặt món
-            </Button>
           </div>
         )}
       </SheetContent>
