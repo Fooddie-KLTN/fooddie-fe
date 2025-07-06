@@ -81,8 +81,6 @@ export default function UpdateFoodPage() {
   const [toppingName, setToppingName] = useState("");
   const [toppingPrice, setToppingPrice] = useState("");
   const [toppingLoading, setToppingLoading] = useState(false);
-  const [toppingImageFile, setToppingImageFile] = useState<File | null>(null);
-  const [toppingImagePreview, setToppingImagePreview] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
 
   // Fetch categories
@@ -231,56 +229,14 @@ export default function UpdateFoodPage() {
       const token = getToken();
       if (!token || !foodId) return;
 
-      let toppingImageUrl = "";
-      if (toppingImageFile) {
-        setUploadProgress(25);
-        const apiRequestBody = {
-          fileName: toppingImageFile.name,
-          fileType: toppingImageFile.type,
-          folder: "topping-images",
-          isPublic: true,
-        };
-        const signedUrlResponse = await fetch("/api/gcs-upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(apiRequestBody),
-        });
-
-        setUploadProgress(50);
-        if (!signedUrlResponse.ok) {
-          const errorData = await signedUrlResponse.json().catch(() => ({ message: "Không thể lấy URL tải lên." }));
-          throw new Error(errorData.message || `Lỗi khi lấy URL tải lên: ${signedUrlResponse.statusText}`);
-        }
-        const { url: signedUrl, publicUrl } = await signedUrlResponse.json();
-        if (!signedUrl || !publicUrl) throw new Error("Không nhận được URL hợp lệ từ máy chủ.");
-
-        setUploadProgress(75);
-        const gcsUploadResponse = await fetch(signedUrl, {
-          method: "PUT",
-          body: toppingImageFile,
-          headers: {
-            "Content-Type": toppingImageFile.type,
-            "x-goog-acl": "public-read",
-          },
-        });
-        if (!gcsUploadResponse.ok) {
-          throw new Error(`Tải ảnh topping lên GCS thất bại: ${gcsUploadResponse.statusText}`);
-        }
-        toppingImageUrl = publicUrl;
-        setUploadProgress(100);
-      }
-
       const newTopping = await userApi.food.addTopping(token, foodId, {
         name: toppingName.trim(),
-        price: priceValue, // Send as number, not string
-        image: toppingImageUrl,
+        price: priceValue.toString(), // Send as number, not string
       } as Topping);
 
       setToppings((prev) => [...prev, newTopping]);
       setToppingName("");
       setToppingPrice("");
-      setToppingImageFile(null);
-      setToppingImagePreview(null);
       setUploadProgress(0);
       showNotification("Đã thêm topping thành công", "success");
     } catch (err) {
@@ -413,6 +369,8 @@ export default function UpdateFoodPage() {
         restaurantId,
         image: imageUrl,
         imageUrls,
+        preparationTime:
+        form.preparationTime?.trim() === "" ? null : Number(form.preparationTime),
       };
 
       await userApi.food.updateFood(token, foodId, updateData);
@@ -431,18 +389,6 @@ export default function UpdateFoodPage() {
     } finally {
       setLoading(false);
       setUploadProgress(0);
-    }
-  };
-
-  const handleToppingImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        showNotification("Kích thước ảnh không được vượt quá 5MB", "error");
-        return;
-      }
-      setToppingImageFile(file);
-      setToppingImagePreview(URL.createObjectURL(file));
     }
   };
 
@@ -676,7 +622,7 @@ export default function UpdateFoodPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Add Topping Form */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Input
                   placeholder="Tên topping"
                   value={toppingName}
@@ -688,23 +634,7 @@ export default function UpdateFoodPage() {
                   value={toppingPrice}
                   onChange={(e) => setToppingPrice(e.target.value)}
                 />
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleToppingImageChange}
-                  className="file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-primary/10 file:text-primary"
-                />
               </div>
-
-              {toppingImagePreview && (
-                <div className="flex justify-center">
-                  <img
-                    src={toppingImagePreview}
-                    alt="Topping preview"
-                    className="w-16 h-16 object-cover rounded-lg border-2 border-gray-200"
-                  />
-                </div>
-              )}
 
               <Button
                 type="button"
