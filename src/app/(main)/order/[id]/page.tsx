@@ -50,6 +50,12 @@ const STATUS_CONFIG = {
     icon: <CheckCircle2 className="w-4 h-4" />,
     bgColor: "bg-blue-500"
   },
+  shipper_received: {
+    label: "Tài xế đã nhận",
+    color: "bg-purple-50 text-purple-700 border-purple-200",
+    icon: <Package className="w-4 h-4" />,
+    bgColor: "bg-purple-500"
+  },
   delivering: {
     label: "Đang giao hàng",
     color: "bg-orange-50 text-orange-700 border-orange-200",
