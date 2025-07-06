@@ -186,7 +186,14 @@ export interface CartItem {
   quantity: number;
   discountPercent?: number;
   restaurantId?: string;
+
+  toppings?: {
+    id: string;
+    name: string;
+    price: number;
+  }[];
 }
+
 
 export interface OrderDetail {
   id: string;

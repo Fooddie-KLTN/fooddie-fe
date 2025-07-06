@@ -71,12 +71,6 @@ export function SheetContent({
         <div className="h-full flex flex-col p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-bold text-brown-800">🛒 Giỏ hàng của bạn</h2>
-            <button
-              onClick={onClose}
-              className="text-brown-700 hover:text-white bg-white hover:bg-primary/70 p-1 rounded-full transition"
-            >
-              <X className="h-5 w-5" />
-            </button>
           </div>
           <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-yellow-500 scrollbar-track-transparent">
             {children}
