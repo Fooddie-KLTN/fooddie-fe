@@ -14,7 +14,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import FoodCard from "../_components/food-card";
 import { useSearchParams } from "next/navigation";
 import { CameraIcon } from "lucide-react";
 import ImageSearchModal from "../_components/image-search";
@@ -66,10 +65,6 @@ export default function FoodSearchPage() {
   // Check if all categories are selected
   const isAllCategoriesSelected = selectedCategories.length === categories.length && categories.length > 0;
 
-  // Format price function
-  const formatPrice = (price: number) => {
-    return price.toLocaleString("vi-VN", { style: "currency", currency: "VND" });
-  };
 
   useEffect(() => {
     if (foods.length > 0) {
