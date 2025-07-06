@@ -66,7 +66,6 @@ export default function FoodDetailPage() {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
   };
 
-
   const incrementQuantity = () => setQuantity(prev => prev + 1);
   const decrementQuantity = () => setQuantity(prev => prev > 1 ? prev - 1 : 1);
 
@@ -90,7 +89,6 @@ export default function FoodDetailPage() {
 
   return (
     <div className="container mx-auto px-4 py-10">
-
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         {/* Food Image Section */}
