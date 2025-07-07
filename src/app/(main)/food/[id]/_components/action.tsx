@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart, Heart, Share2, AlertTriangle } from 'lucide-react';
+import { ShoppingCart, Share2, AlertTriangle, Check } from 'lucide-react';
 import { useCart } from '@/context/cart-context';
 import { FoodPreview } from '@/interface';
 import { toast } from 'sonner';
@@ -17,6 +17,7 @@ export const Action: React.FC<ActionProps> = ({ food }) => {
   const router = useRouter();
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [isSharing, setIsSharing] = useState(false);
 
   // Check if food is available
   const isAvailable = food.status === 'available';
@@ -76,6 +77,42 @@ export const Action: React.FC<ActionProps> = ({ food }) => {
       toast.error('Có lỗi xảy ra');
     } finally {
       setIsAddingToCart(false);
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      setIsSharing(true);
+      
+      // Get current page URL
+      const currentUrl = window.location.href;
+      
+      // Try to use the Web Share API first (mobile browsers)
+      if (navigator.share) {
+        await navigator.share({
+          title: food.name,
+          text: `Xem món ăn ngon: ${food.name}`,
+          url: currentUrl,
+        });
+        toast.success('Đã chia sẻ thành công!');
+      } else {
+        // Fallback to clipboard
+        await navigator.clipboard.writeText(currentUrl);
+        toast.success('Đã sao chép liên kết vào clipboard!');
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+      // If both methods fail, try a manual approach
+      try {
+        const currentUrl = window.location.href;
+        await navigator.clipboard.writeText(currentUrl);
+        toast.success('Đã sao chép liên kết vào clipboard!');
+      } catch (clipboardError) {
+        console.error('Clipboard error:', clipboardError);
+        toast.error('Không thể chia sẻ. Vui lòng thử lại.');
+      }
+    } finally {
+      setTimeout(() => setIsSharing(false), 1000);
     }
   };
 
@@ -193,18 +230,21 @@ export const Action: React.FC<ActionProps> = ({ food }) => {
         <Button
           variant="outline"
           size="sm"
-          className="flex-1 flex items-center justify-center gap-2"
+          className="flex-1 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors"
+          onClick={handleShare}
+          disabled={isSharing}
         >
-          <Heart className="w-4 h-4" />
-          Yêu thích
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex-1 flex items-center justify-center gap-2"
-        >
-          <Share2 className="w-4 h-4" />
-          Chia sẻ
+          {isSharing ? (
+            <>
+              <Check className="w-4 h-4 text-green-600" />
+              <span className="text-green-600">Đã sao chép!</span>
+            </>
+          ) : (
+            <>
+              <Share2 className="w-4 h-4" />
+              Chia sẻ
+            </>
+          )}
         </Button>
       </div>
 

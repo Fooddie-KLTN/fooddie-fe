@@ -29,7 +29,7 @@ const httpLink = new HttpLink({
 // WebSocket link with token
 const wsLink = typeof window !== 'undefined'
   ? new GraphQLWsLink(createClient({
-      url: `ws://${backendUrl}/graphql`,
+      url: `wss://${backendUrl}/graphql`,
       connectionParams: () => {
         const token = getToken();
         return token ? { authorization: `Bearer ${token}` } : {};

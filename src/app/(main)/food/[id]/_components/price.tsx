@@ -12,9 +12,7 @@ interface PriceSectionProps {
 const PriceSection = ({ 
   price, 
   discountPercent, 
-  quantity, 
-  onIncrement, 
-  onDecrement, 
+
   formatPrice 
 }: PriceSectionProps) => {
   const priceValue = Number(price) || 0;
@@ -36,21 +34,6 @@ const PriceSection = ({
         )}
       </div>
       
-      <div className="flex items-center border rounded-lg overflow-hidden">
-        <button 
-          onClick={onDecrement}
-          className="px-3 py-2 bg-gray-100 hover:bg-gray-200"
-        >
-          -
-        </button>
-        <span className="px-4 py-2">{quantity}</span>
-        <button 
-          onClick={onIncrement}
-          className="px-3 py-2 bg-gray-100 hover:bg-gray-200"
-        >
-          +
-        </button>
-      </div>
     </div>
   );
 };

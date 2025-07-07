@@ -1,22 +1,26 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'next/navigation'; // Add this import
+import { useParams } from 'next/navigation';
 import { useOrderCreatedSubscription } from '@/hooks/use-order-subscription';
+import { useOrderStatusSubscription } from '@/hooks/use-order-status-subscription';
 import { useAuth } from '@/context/auth-context';
 import { userApi } from '@/api/user';
 import { Order } from '@/interface';
-import { Bell, Clock, User, MapPin, CheckCircle, Package, XCircle, History, Filter } from 'lucide-react';
+import { OrderDetailModal } from './_components/order-detail-modal';
+import { Bell, Clock, User, MapPin, CheckCircle, Package, XCircle, History, Filter, Eye } from 'lucide-react';
 
 export default function OrderListPage() {
   const { getToken } = useAuth();
-  const params = useParams(); // Get params from URL
-  const restaurantId = params.id as string; // Get restaurant ID directly from URL params
+  const params = useParams();
+  const restaurantId = params.id as string;
   const [orders, setOrders] = useState<Order[]>([]);
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [updatingOrders, setUpdatingOrders] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [loading, setLoading] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Initialize notification sound
@@ -36,7 +40,6 @@ export default function OrderListPage() {
         setLoading(true);
         const token = getToken();
         if (token) {
-          // Use the new API that gets orders by authenticated user's restaurant
           const response = await userApi.order.getOrdersByMyRestaurant(token, 1, 50);
           console.log('Fetched orders:', response);
           setAllOrders(response.items || []);
@@ -49,28 +52,28 @@ export default function OrderListPage() {
     };
 
     fetchAllOrders();
-  }, [restaurantId, getToken]); // Now depend on both restaurantId and getToken
+  }, [restaurantId, getToken]);
   
   const { newOrders, loading: subscriptionLoading, error, clearNewOrders } = useOrderCreatedSubscription(
     restaurantId || ''
   );
+
+  // Order status subscription
+  const { orderStatusUpdate } = useOrderStatusSubscription();
   
   // Handle new orders with notification sound
   useEffect(() => {
     if (newOrders && newOrders.length > 0) {
-      // Play notification sound
       if (audioRef.current) {
         audioRef.current.play().catch(e => console.log('Could not play sound:', e));
       }
 
-      // Update orders list and avoid duplicates
       setOrders(prev => {
         const existingIds = new Set(prev.map(order => order.id));
         const uniqueNewOrders = newOrders.filter(order => !existingIds.has(order.id));
         return [...uniqueNewOrders, ...prev];
       });
 
-      // Also update allOrders list
       setAllOrders(prev => {
         const existingIds = new Set(prev.map(order => order.id));
         const uniqueNewOrders = newOrders.filter(order => !existingIds.has(order.id));
@@ -80,6 +83,32 @@ export default function OrderListPage() {
       clearNewOrders();
     }
   }, [newOrders, clearNewOrders]);
+
+  // Handle order status updates from subscription
+  useEffect(() => {
+    if (orderStatusUpdate) {
+      const updateOrderInList = (orderList: Order[]) => 
+        orderList.map(order => 
+          order.id === orderStatusUpdate.id 
+            ? { ...order, status: orderStatusUpdate.status, updatedAt: orderStatusUpdate.updatedAt }
+            : order
+        );
+
+      setOrders(updateOrderInList);
+      setAllOrders(updateOrderInList);
+
+      // Update selected order if it's the one being updated
+      if (selectedOrder && selectedOrder.id === orderStatusUpdate.id) {
+        setSelectedOrder({
+          ...selectedOrder,
+          status: orderStatusUpdate.status,
+          updatedAt: orderStatusUpdate.updatedAt
+        });
+      }
+
+      console.log(`Order ${orderStatusUpdate.id} status updated to: ${orderStatusUpdate.status}`);
+    }
+  }, [orderStatusUpdate, selectedOrder]);
 
   // Handle order status update
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
@@ -93,7 +122,6 @@ export default function OrderListPage() {
 
       await userApi.order.updateOrderStatus(token, orderId, newStatus);
       
-      // Update local state for both lists
       const updateOrderInList = (orderList: Order[]) => 
         orderList.map(order => 
           order.id === orderId 
@@ -103,6 +131,14 @@ export default function OrderListPage() {
 
       setOrders(updateOrderInList);
       setAllOrders(updateOrderInList);
+
+      // Update selected order if it's the one being updated
+      if (selectedOrder && selectedOrder.id === orderId) {
+        setSelectedOrder({
+          ...selectedOrder,
+          status: newStatus
+        });
+      }
 
       console.log(`Đã cập nhật trạng thái đơn hàng thành: ${newStatus}`);
       
@@ -202,6 +238,16 @@ export default function OrderListPage() {
     }
   };
 
+  const handleViewOrder = (order: Order) => {
+    setSelectedOrder(order);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedOrder(null);
+  };
+
   const OrderCard = ({ order, isNewOrder = false }: { order: Order; isNewOrder?: boolean }) => (
     <div className={`bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow ${isNewOrder ? 'ring-2 ring-orange-200' : ''}`}>
       {/* Order Header */}
@@ -220,7 +266,13 @@ export default function OrderListPage() {
             <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(order.status || 'pending')}`}>
               {order.status?.toUpperCase() || 'PENDING'}
             </span>
-            {getStatusButton(order)}
+            <button
+              onClick={() => handleViewOrder(order)}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-600 p-1 rounded transition-colors"
+              title="Xem chi tiết"
+            >
+              <Eye className="h-3 w-3" />
+            </button>
           </div>
         </div>
       </div>
@@ -278,6 +330,11 @@ export default function OrderListPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="mt-4 flex justify-end">
+          {getStatusButton(order)}
         </div>
       </div>
     </div>
@@ -420,6 +477,15 @@ export default function OrderListPage() {
           )}
         </div>
       </div>
+
+      {/* Order Detail Modal */}
+      <OrderDetailModal
+        order={selectedOrder}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onUpdateStatus={handleUpdateOrderStatus}
+        isUpdating={selectedOrder ? updatingOrders.has(selectedOrder.id) : false}
+      />
     </div>
   );
 }

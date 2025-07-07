@@ -232,7 +232,7 @@ export interface Order {
   restaurant?: Restaurant;
   total?: number;
   note?: string;
-  status?: 'pending' | 'confirmed' | 'delivering' | 'completed' | 'canceled' | 'processing_payment' | string;
+  status?: 'pending' | 'confirmed' | 'delivering' | 'shipper_received' | 'completed' | 'canceled' | 'processing_payment' | string;
   createdAt: string;
   updatedAt: string;
   promotionCode?: Promotion;

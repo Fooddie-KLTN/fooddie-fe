@@ -13,7 +13,6 @@ import { useAuth } from '@/context/auth-context';
 import { userApi } from '@/api/user';
 import { MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import Footer from '@/components/footer';
 
 
 // Format price helper function
@@ -119,7 +118,7 @@ export default function RestaurantPage() {
                         <Button
                             onClick={handleStartConversation}
                             disabled={creatingConversation}
-                            className="flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-2"
+                            className="flex items-center space-x-2 bg-primary hover:text-primary text-white px-6 py-2"
                         >
                             {creatingConversation ? (
                                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -155,7 +154,6 @@ export default function RestaurantPage() {
                 
                 <RestaurantMenu foods={foods} formatPrice={formatPrice} />
             </div>
-            <Footer />
         </div>
     );
 }

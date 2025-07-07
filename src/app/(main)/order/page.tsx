@@ -32,6 +32,7 @@ import {
 const STATUS_LABELS: Record<string, string> = {
   pending: "Chờ xác nhận",
   confirmed: "Đã xác nhận",
+  shipper_received: "Tài xế đã nhận",
   delivering: "Đang giao",
   completed: "Hoàn thành",
   canceled: "Đã hủy",
@@ -41,6 +42,7 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-amber-50 text-amber-700 border-amber-200",
   confirmed: "bg-blue-50 text-blue-700 border-blue-200",
+  shipper_received: "bg-purple-50 text-purple-700 border-purple-200",
   delivering: "bg-orange-50 text-orange-700 border-orange-200",
   completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
   canceled: "bg-red-50 text-red-700 border-red-200",
@@ -50,6 +52,7 @@ const STATUS_COLORS: Record<string, string> = {
 const STATUS_ICONS: Record<string, JSX.Element> = {
   pending: <ClockIcon className="w-4 h-4" />,
   confirmed: <Package className="w-4 h-4" />,
+  shipper_received: <Truck className="w-4 h-4" />,
   delivering: <Truck className="w-4 h-4" />,
   completed: <BadgeCheck className="w-4 h-4" />,
   canceled: <XCircle className="w-4 h-4" />,
