@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "NODE_OPTIONS='--max-old-space-size=256' next build",
-    "build:minimal": "NODE_OPTIONS='--max-old-space-size=256 --no-deprecation' next build --no-lint",
-    "build:ultra": "NODE_OPTIONS='--max-old-space-size=200 --optimize-for-size' next build --no-lint",
-    "start": "NODE_OPTIONS='--max-old-space-size=128' next start",
+    "build": "NODE_OPTIONS='--max-old-space-size=400' next build",
+    "build:minimal": "NODE_OPTIONS='--max-old-space-size=350' next build --no-lint",
+    "build:ultra": "NODE_OPTIONS='--max-old-space-size=300' next build --no-lint --no-mangling",
+    "build:render": "NODE_OPTIONS='--max-old-space-size=450 --optimize-for-size' next build --no-lint",
+    "start": "NODE_OPTIONS='--max-old-space-size=100' next start",
     "lint": "next lint"
   },
   "dependencies": {
