@@ -4,22 +4,29 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: "https", // or http
+        protocol: "https",
         hostname: "**",
       },
     ],
   },
   typescript: {
-    // This option allows you to ignore type errors during the build process.
-    // Use with caution, as it may hide potential issues in your code.
     ignoreBuildErrors: true,
   },
   eslint: {
-    // This option allows you to ignore ESLint errors during the build process.
-    // Use with caution, as it may hide potential issues in your code.
     ignoreDuringBuilds: true,
   },
-
+  // Optimize for minimal server resources
+  swcMinify: true,
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production",
+  },
+  // Reduce bundle size
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-dialog'],
+  },
+  // Static optimization
+  output: 'standalone',
 };
 
 export default nextConfig;
