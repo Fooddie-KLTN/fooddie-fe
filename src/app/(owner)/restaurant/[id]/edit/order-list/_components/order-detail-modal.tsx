@@ -66,6 +66,15 @@ export function OrderDetailModal({
     }
   }, [order]);
 
+  // Add this useEffect to refetch order when status changes to shipper_received or delivering
+  useEffect(() => {
+    if (order && (order.status === "shipper_received" || order.status === "delivering")) {
+      // Trigger a refetch of the order to get shipper information
+      // This assumes you have access to a refetch function or can emit an event
+      console.log(`[DEBUG] Order status changed to ${order.status}, should refetch order data`);
+    }
+  }, [order?.status]);
+
   if (!isOpen || !order) return null;
 
   const formatTime = (dateString: string) => {
@@ -140,7 +149,7 @@ export function OrderDetailModal({
 
   // Find shipper info if available
   const shipper = order.shippingDetail?.shipper;
-  const hasShippingDetail = order.shippingDetail ;
+  const hasShippingDetail = order.shippingDetail && (order.status === "shipper_received" || order.status === "delivering");
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -280,7 +289,7 @@ export function OrderDetailModal({
               </div>
             </div>
 
-            {/* Shipping & Map Section - Only show when there's shipping detail */}
+            {/* Shipping & Map Section - Only show when status is shipper_received or delivering */}
             {hasShippingDetail && (
               <div className="space-y-6">
                 {/* Shipper Info */}
@@ -300,6 +309,12 @@ export function OrderDetailModal({
                         <p className="text-sm text-gray-600 flex items-center gap-1">
                           <Phone className="w-3 h-3" />
                           {shipper.phone}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {order.status === "shipper_received" 
+                            ? "Tài xế đang đến nhà hàng" 
+                            : "Tài xế đang giao hàng"
+                          }
                         </p>
                       </div>
                     </div>
@@ -336,16 +351,12 @@ export function OrderDetailModal({
                       userLocation={userLocation}
                     />
                   </div>
-                  {order.status === "shipper_received" && (
-                    <p className="text-xs text-gray-500 mt-2 text-center">
-                      Tài xế đang trên đường đến nhà hàng
-                    </p>
-                  )}
-                  {order.status === "delivering" && (
-                    <p className="text-xs text-gray-500 mt-2 text-center">
-                      Tài xế đang giao hàng đến bạn
-                    </p>
-                  )}
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    {order.status === "shipper_received" 
+                      ? "Tài xế đang trên đường đến nhà hàng" 
+                      : "Tài xế đang giao hàng đến khách hàng"
+                    }
+                  </p>
                 </div>
               </div>
             )}

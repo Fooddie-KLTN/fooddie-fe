@@ -194,6 +194,7 @@ export default function OrderDetailPage() {
     refreshOrder();
   };
 
+  // Handle order status updates
   useEffect(() => {
     if (
       orderStatusData?.orderStatusUpdated &&
@@ -210,18 +211,20 @@ export default function OrderDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderStatusData, order?.id]);
 
-  // Fetch order again when status changes to 'delivering'
+  // Fetch order again when status changes to 'shipper_received' or 'delivering'
   useEffect(() => {
     if (
       orderStatusData?.orderStatusUpdated &&
       order &&
       order.id === orderStatusData.orderStatusUpdated.id &&
-      orderStatusData.orderStatusUpdated.status === "delivering" // <-- Only when status is delivering
+      (orderStatusData.orderStatusUpdated.status === "shipper_received" || 
+       orderStatusData.orderStatusUpdated.status === "delivering") // <-- Include both statuses
     ) {
       const fetchOrder = async () => {
         const token = await getToken();
         if (!token || !orderId) return;
         try {
+          console.log(`[DEBUG] Refetching order due to status change: ${orderStatusData.orderStatusUpdated.status}`);
           const res = await adminService.Order.getOrderById(token, orderId);
           setOrder(res);
         } catch (err) {
@@ -239,7 +242,6 @@ export default function OrderDetailPage() {
         lat: order.address?.latitude || 0,
         lng: order.address?.longitude || 0,
       });
-
     }
   }, [order]);
 
@@ -442,7 +444,8 @@ export default function OrderDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="w-full h-[400px] rounded-xl overflow-hidden">
-                  { order.status === "shipper_received" ? (
+                  {/* Start shipper location subscription when status is shipper_received OR delivering */}
+                  {(order.status === "shipper_received" || order.status === "delivering") ? (
                     <>
                       {order.shippingDetail && order.shippingDetail.shipper?.id && (
                         <ShipperLocationSubscriber
@@ -450,54 +453,81 @@ export default function OrderDetailPage() {
                           onData={setShipperLocationData}
                         />
                       )}
+                      
                       {/* Shipper Info */}
                       {shipper && (
-                        <Card>
-                          <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                              <Truck className="w-5 h-5" />
-                              Thông tin tài xế
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="flex flex-row items-start gap-4">
-                            <div className="flex items-center gap-4 flex-1">
-                              <Avatar>
-                                <AvatarImage src={shipper.avatar} alt={shipper.name} />
-                                <AvatarFallback>{shipper.name?.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <h4 className="font-semibold">{shipper.name}</h4>
-                                <p className="text-sm text-gray-600">{shipper.phone}</p>
+                        <div className="mb-4">
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="flex items-center gap-2">
+                                <Truck className="w-5 h-5" />
+                                Thông tin tài xế
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="flex flex-row items-start gap-4">
+                              <div className="flex items-center gap-4 flex-1">
+                                <Avatar>
+                                  <AvatarImage src={shipper.avatar} alt={shipper.name} />
+                                  <AvatarFallback>{shipper.name?.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <h4 className="font-semibold">{shipper.name}</h4>
+                                  <p className="text-sm text-gray-600">{shipper.phone}</p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    {order.status === "shipper_received" 
+                                      ? "Tài xế đang đến nhà hàng" 
+                                      : "Tài xế đang giao hàng đến bạn"
+                                    }
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                            <div className="flex flex-col flex-0 items-end justify-end w-fit ml-auto">
-                              <Button
-                                className="mt-2"
-                                variant="outline"
-                                onClick={() => {
-                                  // Replace this with your chat open logic
-                                  alert(`Open chat with shipper: ${shipper.name}`);
-                                }}
-                              >
-                                <MessageSquare className="w-4 h-4 mr-2" />
-                                Nhắn tin với tài xế
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
+                              <div className="flex flex-col flex-0 items-end justify-end w-fit ml-auto">
+                                <Button
+                                  className="mt-2"
+                                  variant="outline"
+                                  onClick={() => {
+                                    // Replace this with your chat open logic
+                                    alert(`Open chat with shipper: ${shipper.name}`);
+                                  }}
+                                >
+                                  <MessageSquare className="w-4 h-4 mr-2" />
+                                  Nhắn tin với tài xế
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
                       )}
+                      
+                      {/* Map with shipper tracking */}
                       <Map
                         shipperLocation={shipperLocationData?.shipperLocationUpdated}
                         userLocation={userLocation}
                       />
                     </>
-                  ) : ( order.status !== "completed" ?
-                    (
+                  ) : order.status === "completed" ? (
+                    <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                      <CheckCircle2 className="w-16 h-16 mb-4 text-green-500" />
+                      <p className="text-lg font-semibold text-green-600">Đơn hàng đã được giao thành công!</p>
+                      <p className="text-sm">Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi</p>
+                    </div>
+                  ) : order.status === "canceled" ? (
+                    <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                      <XCircle className="w-16 h-16 mb-4 text-red-500" />
+                      <p className="text-lg font-semibold text-red-600">Đơn hàng đã bị hủy</p>
+                    </div>
+                  ) : (
                     <div className="flex flex-col items-center justify-center h-full text-gray-500">
                       <Loader2 className="animate-spin w-10 h-10 mb-4" />
-                      <p>Hệ thống đang tìm tài xế giao hàng cho bạn...</p>
+                      <p>
+                        {order.status === "pending" 
+                          ? "Đang chờ nhà hàng xác nhận đơn hàng..." 
+                          : order.status === "confirmed"
+                          ? "Hệ thống đang tìm tài xế giao hàng cho bạn..."
+                          : "Đang xử lý đơn hàng..."
+                        }
+                      </p>
                     </div>
-                  ) : (<></>)
                   )}
                 </div>
               </CardContent>
