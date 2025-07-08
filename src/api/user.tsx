@@ -38,6 +38,13 @@ interface CreateFoodReviewDto {
   rating: number;
 }
 
+export interface CreateShipperReviewDto {
+  shipperId: string;
+  rating: number;
+  comment: string;
+}
+
+
 /**
  * Dịch vụ API cho người dùng đã xác thực
  * 
@@ -504,6 +511,17 @@ export const userApi = {
         throw error;
       }
     },
+
+    async createShipperReview(token: string, data: CreateShipperReviewDto): Promise<any> {
+      try {
+        return await apiRequest<any>('/reviews/shipper', 'POST', { token, data });
+      } catch (error) {
+        console.error('Shipper review API error:', error);
+        throw error;
+      }
+    },
+    
+    
 
     /**
      * Lấy danh sách đánh giá của món ăn
