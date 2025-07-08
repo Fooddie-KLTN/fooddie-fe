@@ -33,6 +33,7 @@ import { useSubscription } from "@apollo/client";
 import { SHIPPER_LOCATION_SUBSCRIPTION } from "@/lib/graphql/subcriptions/shipperSubcriptions";
 import type { OrderResponse } from "@/api/admin";
 import { ORDER_STATUS_SUBSCRIPTION } from "@/lib/graphql/subcriptions/orderSubcriptions";
+import ShipperRatingModal from "./_components/shipper-rating-modal";
 
 // Map chỉ load khi client-side
 const Map = dynamic(() => import("@/components/common/map"), { ssr: false });
@@ -605,24 +606,43 @@ export default function OrderDetailPage() {
               </Card>
             )}
 
-            {/* Actions */}
-            <div className="space-y-3">
-              {order.status === 'completed' && order.reviewInfo && !order.reviewInfo.hasReviewedFood && (
-                <RatingModal
-                  orderDetails={order.orderDetails}
-                  onReviewSubmitted={handleReviewSubmitted}
-                  trigger={
-                    <Button className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600">
-                      <Star className="w-4 h-4 mr-2" />
-                      Đánh giá đơn hàng
-                    </Button>
-                  }
-                />
-              )}
-              <Button variant="outline" className="w-full">
-                Liên hệ hỗ trợ
-              </Button>
-            </div>
+              {/* Actions */}
+              <div className="space-y-3">
+                {/* Đánh giá tài xế */}
+                {order.status === 'completed' && order.reviewInfo && !order.reviewInfo.hasReviewedShipper && order.shippingDetail?.shipper && (
+                  <ShipperRatingModal
+                    shipper={order.shippingDetail.shipper}
+                    onSubmitted={handleReviewSubmitted}
+                    trigger={
+                      <Button className="w-full bg-gradient-to-r from-blue-400 to-purple-500 text-white hover:from-blue-500 hover:to-purple-600">
+                        <Star className="w-4 h-4 mr-2" />
+                        Đánh giá tài xế
+                      </Button>
+                    }
+                  />
+                )}
+
+                {/* Đánh giá món ăn */}
+                {order.status === 'completed' && order.reviewInfo && !order.reviewInfo.hasReviewedFood && (
+                  <RatingModal
+                    orderDetails={order.orderDetails}
+                    onReviewSubmitted={handleReviewSubmitted}
+                    trigger={
+                      <Button className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white">
+                        <Star className="w-4 h-4 mr-2" />
+                        Đánh giá món ăn
+                      </Button>
+                    }
+                  />
+                )}
+
+                {/* Liên hệ hỗ trợ
+                <Button variant="outline" className="w-full">
+                  Liên hệ hỗ trợ
+                </Button> */}
+              </div>
+
+            
           </div>
         </div>
       </div>
