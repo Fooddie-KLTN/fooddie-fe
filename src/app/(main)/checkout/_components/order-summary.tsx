@@ -153,7 +153,7 @@ export const OrderSummary = ({
       </CardContent>
       <CardFooter>
         <Button
-          className="w-full text-base font-bold bg-primary text-white hover:bg-primary/90 transition disabled:opacity-60 py-3 rounded-lg"
+          className="w-full text-base font-bold bg-primary text-white hover:text-primary hover:bg-white hover:border hover:border-black transition disabled:opacity-60 py-3 rounded-lg"
           size="lg"
           disabled={!selectedUserAddressId}
           onClick={onOrder}

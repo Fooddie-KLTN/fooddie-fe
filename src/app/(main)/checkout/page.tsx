@@ -68,7 +68,7 @@ export default function CheckoutPage() {
         {displayCartItems?.length > 0 && (
           <a
             href={`/restaurant/${restaurantId}`}
-            className="inline-flex items-center gap-2 rounded-md bg-[#9F6508] px-4 py-2 text-white font-semibold hover:bg-[#8b5707] transition-colors"
+            className="inline-flex items-center gap-2 rounded-md bg-[#9F6508] px-4 py-2 text-white font-semibold hover:text-primary hover:bg-white hover:border hover:border-black transition-colors"
           >
             ← Quay về cửa hàng
           </a>
