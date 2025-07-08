@@ -57,9 +57,23 @@ export default function CheckoutPage() {
     setShowOnlineDropdown(false);
   };
 
+  console.log('Display cart items', displayCartItems)
+  const restaurantId = displayCartItems?.[0]?.restaurant.id;
+
   return (
     <div className="container mx-auto px-2 py-8 max-w-5xl min-h-screen">
-      <h1 className="text-3xl font-bold mb-8 text-center md:text-left">Thanh toán</h1>
+      <div className="flex justify-between items-center mb-8 flex-wrap gap-2">
+        <h1 className="text-3xl font-bold">Thanh toán</h1>
+
+        {displayCartItems?.length > 0 && (
+          <a
+            href={`/restaurant/${restaurantId}`}
+            className="inline-flex items-center gap-2 rounded-md bg-[#9F6508] px-4 py-2 text-white font-semibold hover:bg-[#8b5707] transition-colors"
+          >
+            ← Quay về cửa hàng
+          </a>
+        )}
+      </div>
       {initialLoading ? (
         <div className="text-center py-10">Đang tải giỏ hàng...</div>
       ) : !displayCartItems || displayCartItems.length === 0 ? (
