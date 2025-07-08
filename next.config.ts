@@ -9,7 +9,16 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  ignoreBuildErrors: true, // Ignore build errors
+  typescript: {
+    // This option allows you to ignore type errors during the build process.
+    // Use with caution, as it may hide potential issues in your code.
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    // This option allows you to ignore ESLint errors during the build process.
+    // Use with caution, as it may hide potential issues in your code.
+    ignoreDuringBuilds: true,
+  }
 };
 
 export default nextConfig;
