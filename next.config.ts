@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    unoptimized: true, // Disable image optimization to save memory
     remotePatterns: [
       {
         protocol: "https",
@@ -15,18 +16,20 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Optimize for minimal server resources
-  swcMinify: true,
+  // Disable all optimization features that use memory
+  swcMinify: false,
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
   },
-  // Reduce bundle size
   experimental: {
-    optimizeCss: true,
-    optimizePackageImports: ['lucide-react', '@radix-ui/react-dialog'],
+    optimizeCss: false,
+    optimizePackageImports: [],
   },
-  // Static optimization
+  // Essential for small storage
   output: 'standalone',
+  distDir: '.next',
+  // Reduce build output
+  generateBuildId: () => 'build',
 };
 
 export default nextConfig;

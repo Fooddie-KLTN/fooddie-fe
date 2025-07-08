@@ -441,9 +441,9 @@ export default function OrderDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="w-full h-[400px] rounded-xl overflow-hidden">
-                  {order.shippingDetail && order.status === "shipper_received" ? (
+                  { order.status === "shipper_received" ? (
                     <>
-                      {order.shippingDetail.shipper?.id && (
+                      {order.shippingDetail && order.shippingDetail.shipper?.id && (
                         <ShipperLocationSubscriber
                           shipperId={order.shippingDetail.shipper.id}
                           onData={setShipperLocationData}
