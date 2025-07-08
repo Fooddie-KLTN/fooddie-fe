@@ -14,10 +14,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { useSearchParams } from "next/navigation";
-import { CameraIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { useSearchParams, useRouter } from "next/navigation"; // Add useRouter import
+import { CameraIcon, SlidersHorizontal, X, Filter, ExternalLink } from "lucide-react";
 import ImageSearchModal from "../_components/image-search";
-import RestaurantWithFoods from "../_components/restaurant-with-foods";
+
+type FoodSortType = 'newest' | 'nearby' | 'hot' | 'most_review' | 'most_buy' | 'rating' | 'price' | 'name';
 
 const priceRanges = [
   { label: "Dưới 50.000đ", value: "under50", min: 0, max: 50000 },
@@ -32,11 +35,23 @@ const radiusOptions = [
   { label: "20 km", value: 20 },
   { label: "50 km", value: 50 },
   { label: "100 km", value: 100 },
-  { label: "Tất cả", value: 999999 }, // Use a large number for "All"
+  { label: "Tất cả", value: 999999 },
+];
+
+const sortOptions: { label: string; value: FoodSortType }[] = [
+  { label: "Mới nhất", value: "newest" },
+  { label: "Gần nhất", value: "nearby" },
+  { label: "Phổ biến", value: "hot" },
+  { label: "Nhiều đánh giá", value: "most_review" },
+  { label: "Bán chạy", value: "most_buy" },
+  { label: "Đánh giá cao", value: "rating" },
+  { label: "Giá tăng dần", value: "price" },
+  { label: "Tên A-Z", value: "name" },
 ];
 
 export default function FoodSearchPage() {
   const searchParams = useSearchParams();
+  const router = useRouter(); // Add router instance
   const initialSearch = searchParams.get("search") || "";
 
   const [search, setSearch] = useState(initialSearch);
@@ -48,9 +63,11 @@ export default function FoodSearchPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedPrices, setSelectedPrices] = useState<string[]>([]);
   const [radius, setRadius] = useState(1000);
+  const [sortBy, setSortBy] = useState<FoodSortType>('newest');
   const [loading, setLoading] = useState(false);
-  const [showingAll, setShowingAll] = useState(true); // Start with showing all
+  const [showingAll, setShowingAll] = useState(true);
   const [openImageModal, setOpenImageModal] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   // Price filter logic
   const minPrice = useMemo(() => {
@@ -65,25 +82,30 @@ export default function FoodSearchPage() {
   // Check if all categories are selected
   const isAllCategoriesSelected = selectedCategories.length === categories.length && categories.length > 0;
 
+  // Count active filters
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (selectedCategories.length > 0 && selectedCategories.length < categories.length) count++;
+    if (selectedPrices.length > 0) count++;
+    if (radius !== 1000) count++;
+    return count;
+  }, [selectedCategories.length, categories.length, selectedPrices.length, radius]);
 
   useEffect(() => {
     if (foods.length > 0) {
       console.log("🧾 First food item:", foods[0]);
     }
   }, [foods]);
+
   // Fetch categories and initial foods
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        // Fetch categories
         const categoriesRes = await guestService.category.getCategories(1, 50);
         const fetchedCategories = categoriesRes.items ?? [];
         setCategories(fetchedCategories);
-        
-        // Set all categories as selected initially
         setSelectedCategories(fetchedCategories.map(cat => cat.id));
         
-        // Fetch all foods on initial load
         setLoading(true);
         const foodsRes = await guestService.food.searchFoodsByName(
           "",
@@ -92,9 +114,10 @@ export default function FoodSearchPage() {
           10.7769,
           106.7009,
           radius,
-          fetchedCategories.map(cat => cat.id), // Use all category IDs
+          fetchedCategories.map(cat => cat.id),
           undefined,
-          undefined
+          undefined,
+          sortBy
         );
         setAllFoods(foodsRes.items ?? []);
         setFoods(foodsRes.items ?? []);
@@ -121,7 +144,8 @@ export default function FoodSearchPage() {
         radius,
         selectedCategories,
         minPrice,
-        maxPrice === Infinity ? undefined : maxPrice
+        maxPrice === Infinity ? undefined : maxPrice,
+        sortBy
       );
       setAllFoods(res.items ?? []);
       setFoods(res.items ?? []);
@@ -141,7 +165,6 @@ export default function FoodSearchPage() {
     }
     
     if (showingAll && !debouncedSearch.trim()) {
-      // If showing all and no search, apply filters to all foods
       let filtered = allFoods;
       
       if (selectedCategories.length > 0 && selectedCategories.length < categories.length) {
@@ -174,7 +197,8 @@ export default function FoodSearchPage() {
       radius,
       selectedCategories,
       minPrice,
-      maxPrice === Infinity ? undefined : maxPrice
+      maxPrice === Infinity ? undefined : maxPrice,
+      sortBy
     )
     .then(res => {
       const nameSearch = debouncedSearch.trim().toLowerCase();
@@ -184,9 +208,22 @@ export default function FoodSearchPage() {
       );
       setFoods(matched);
     })
-    
-      .finally(() => setLoading(false));
-  }, [debouncedSearch, selectedCategories, minPrice, maxPrice, radius, showingAll, allFoods, categories.length]);
+    .finally(() => setLoading(false));
+  }, [debouncedSearch, selectedCategories, minPrice, maxPrice, radius, sortBy, showingAll, allFoods, categories.length]);
+
+  // Handle restaurant click - navigate to restaurant detail page
+  const handleRestaurantClick = (restaurantId: string) => {
+    if (restaurantId) {
+      router.push(`/restaurant/${restaurantId}`);
+    }
+  };
+
+  // Handle food click - navigate to food detail page
+  const handleFoodClick = (foodId: string | undefined) => {
+    if (foodId) {
+      router.push(`/food/${foodId}`);
+    }
+  };
 
   // Handle category checkbox
   const handleCategory = (id: string) => {
@@ -211,140 +248,592 @@ export default function FoodSearchPage() {
     );
   };
 
+  // Handle sort change
+  const handleSortChange = (value: FoodSortType) => {
+    setSortBy(value);
+  };
+
   // Handle show all button
   const handleShowAll = () => {
     setSearch("");
     fetchAllFoods();
   };
 
-  const groupedFoods = useMemo(() => {
-    const map = new Map<string, { restaurant: Restaurant; foods: FoodPreview[] }>();
-  
-    for (const food of foods) {
-      const rid = food.restaurant?.id;
-      if (!rid) continue;
-  
-      if (!map.has(rid)) {
-        map.set(rid, { restaurant: food.restaurant, foods: [food] });
-      } else {
-        map.get(rid)!.foods.push(food);
+  // Clear all filters
+  const clearAllFilters = () => {
+    setSelectedCategories(categories.map(cat => cat.id));
+    setSelectedPrices([]);
+    setRadius(1000);
+  };
+
+  // Create properly sorted foods that respect the sortBy parameter
+  const sortedFoods = useMemo(() => {
+    if (foods.length === 0) return [];
+
+    // Since the API doesn't seem to be sorting properly, let's sort client-side
+    const sorted = [...foods].sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          // Sort by creation date (assuming newer items have larger IDs or timestamps)
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        
+        case 'nearby':
+          // Sort by distance (this should already be working from API)
+          const aDistance = Number(a.restaurant?.distance) || 999;
+          const bDistance = Number(b.restaurant?.distance) || 999;
+          return aDistance - bDistance;
+        
+        case 'hot':
+        case 'most_buy':
+          // Sort by sold count
+          return (b.soldCount || 0) - (a.soldCount || 0);
+        
+        
+        case 'rating':
+          // Sort by rating (highest first)
+          const aRating = a.rating || 0;
+          const bRating = b.rating || 0;
+          if (bRating !== aRating) return bRating - aRating;
+          // If ratings are equal, sort by review count
+          return (b.rating || 0) - (a.rating || 0);
+        
+        case 'price':
+          // Sort by price (lowest first)
+          const aPrice = typeof a.price === 'number' ? a.price : parseFloat(a.price) || 0;
+          const bPrice = typeof b.price === 'number' ? b.price : parseFloat(b.price) || 0;
+          return aPrice - bPrice;
+        
+        case 'name':
+          // Sort alphabetically by name
+          return a.name.localeCompare(b.name, 'vi');
+        
+        default:
+          return 0;
       }
-    }
-  
-    return Array.from(map.values()).sort((a, b) => b.foods.length - a.foods.length);
-  }, [foods]);
-  
+    });
+
+    return sorted;
+  }, [foods, sortBy]);
+
+  // Create a sorted display that respects the sort order
+  const sortedGroupedFoods = useMemo(() => {
+    if (sortedFoods.length === 0) return [];
+
+    // Group foods by restaurant while maintaining the order of first appearance
+    const restaurantOrder: string[] = [];
+    const groupMap = new Map<string, { restaurant: Restaurant; foods: FoodPreview[]; firstIndex: number }>();
+    
+    sortedFoods.forEach((food, index) => {
+      const rid = food.restaurant?.id;
+      if (!rid) return;
+      
+      if (!groupMap.has(rid)) {
+        restaurantOrder.push(rid);
+        groupMap.set(rid, { 
+          restaurant: food.restaurant, 
+          foods: [food],
+          firstIndex: index
+        });
+      } else {
+        groupMap.get(rid)!.foods.push(food);
+      }
+    });
+
+    // Sort restaurants based on the position of their first food in the sorted list
+    restaurantOrder.sort((a, b) => {
+      const aFirstIndex = groupMap.get(a)?.firstIndex ?? Infinity;
+      const bFirstIndex = groupMap.get(b)?.firstIndex ?? Infinity;
+      return aFirstIndex - bFirstIndex;
+    });
+
+    // Return the grouped foods in the correct order
+    return restaurantOrder.map(rid => groupMap.get(rid)!);
+  }, [sortedFoods]);
+
+  const FiltersContent = () => (
+    <div className="space-y-6">
+      {/* Clear filters */}
+      {activeFiltersCount > 0 && (
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Bộ lọc đã chọn</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearAllFilters}
+            className="text-orange-600 hover:text-orange-700"
+          >
+            Xóa tất cả
+          </Button>
+        </div>
+      )}
+
+      {/* Categories */}
+      <div>
+        <h3 className="font-semibold mb-3 text-gray-900">Danh mục</h3>
+        <div className="space-y-2">
+          <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+            <Checkbox
+              checked={isAllCategoriesSelected}
+              onCheckedChange={handleAllCategories}
+            />
+            <span className="font-medium text-gray-700">Tất cả</span>
+          </label>
+          {categories.map(cat => (
+            <label key={cat.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+              <Checkbox
+                checked={selectedCategories.includes(cat.id)}
+                onCheckedChange={() => handleCategory(cat.id)}
+              />
+              <span className="text-gray-700">{cat.name}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Price ranges */}
+      <div>
+        <h3 className="font-semibold mb-3 text-gray-900">Khoảng giá</h3>
+        <div className="space-y-2">
+          {priceRanges.map(range => (
+            <label key={range.value} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+              <Checkbox
+                checked={selectedPrices.includes(range.value)}
+                onCheckedChange={() => handlePrice(range.value)}
+              />
+              <span className="text-gray-700">{range.label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Radius */}
+      <div>
+        <h3 className="font-semibold mb-3 text-gray-900">Bán kính giao hàng</h3>
+        <Select value={radius.toString()} onValueChange={val => setRadius(Number(val))}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Chọn bán kính" />
+          </SelectTrigger>
+          <SelectContent>
+            {radiusOptions.map(opt => (
+              <SelectItem key={opt.value} value={opt.value.toString()}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-4">Tìm kiếm món ăn</h1>
-      
-      <div className="mb-6 flex gap-2 flex-wrap">
-        <div className="relative w-full max-w-md">
-          <Input
-            className="border rounded px-3 py-2 w-full pr-10"
-            placeholder="Nhập tên món ăn hoặc nhà hàng..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-          <button
-            type="button"
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-orange-100 transition-colors"
-            title="Tìm kiếm bằng hình ảnh"
-            onClick={() => setOpenImageModal(true)}
-            tabIndex={0}
-          >
-            <CameraIcon className="h-5 w-5 text-orange-500" />
-          </button>
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-6 lg:py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Tìm kiếm món ăn</h1>
+          <p className="text-gray-600">Khám phá hàng ngàn món ăn ngon từ các nhà hàng gần bạn</p>
         </div>
-        <Button 
-          onClick={handleShowAll}
-          variant="outline"
-          className="whitespace-nowrap"
-        >
-          Hiển thị tất cả
-        </Button>
-      </div>
-
-      <div className="flex flex-col md:flex-row gap-8">
-        {/* Filters */}
-        <aside className="md:w-1/4">
-          <div className="mb-6">
-            <h2 className="font-semibold mb-2">Danh mục</h2>
-            {/* ALL categories option */}
-            <label className="flex items-center gap-2 mb-2 font-medium border-b pb-1">
-              <Checkbox
-                checked={isAllCategoriesSelected}
-                onCheckedChange={handleAllCategories}
-              />
-              Tất cả
-            </label>
-            {categories.map(cat => (
-              <label key={cat.id} className="flex items-center gap-2 mb-1">
-                <Checkbox
-                  checked={selectedCategories.includes(cat.id)}
-                  onCheckedChange={() => handleCategory(cat.id)}
+        
+        {/* Search Bar */}
+        <Card className="mb-6 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex gap-3 flex-wrap">
+              <div className="relative flex-1 min-w-[300px]">
+                <Input
+                  className="pl-4 pr-12 py-3 text-lg border-gray-200 focus:border-orange-400 focus:ring-orange-400"
+                  placeholder="Tìm kiếm món ăn, nhà hàng..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
                 />
-                {cat.name}
-              </label>
-            ))}
-          </div>
-          <div className="mb-6">
-            <h2 className="font-semibold mb-2">Khoảng giá</h2>
-            {priceRanges.map(range => (
-              <label key={range.value} className="flex items-center gap-2 mb-1">
-                <Checkbox
-                  checked={selectedPrices.includes(range.value)}
-                  onCheckedChange={() => handlePrice(range.value)}
-                />
-                {range.label}
-              </label>
-            ))}
-          </div>
-          <div>
-            <h2 className="font-semibold mb-2">Bán kính</h2>
-            <Select value={radius.toString()} onValueChange={val => setRadius(Number(val))}>
-              <SelectTrigger className="border rounded px-2 py-1 w-full">
-                <SelectValue placeholder="Chọn bán kính" />
-              </SelectTrigger>
-              <SelectContent>
-                {radiusOptions.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value.toString()}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </aside>
-
-        {/* Food results */}
-        <main className="flex-1">
-          {loading && <div className="text-center py-8">Đang tải...</div>}
-          {!loading && foods.length === 0 && !showingAll && debouncedSearch.trim() && (
-            <div className="text-center py-8">Không tìm thấy món ăn phù hợp.</div>
-          )}
-          {!loading && foods.length === 0 && !debouncedSearch.trim() && !showingAll && (
-            <div className="text-center py-8">
-              <p className="mb-4">Nhập tên món ăn để tìm kiếm hoặc</p>
-              <Button onClick={handleShowAll} variant="outline">
-                Hiển thị tất cả món ăn
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full hover:bg-orange-100 transition-colors"
+                  title="Tìm kiếm bằng hình ảnh"
+                  onClick={() => setOpenImageModal(true)}
+                >
+                  <CameraIcon className="h-5 w-5 text-orange-500" />
+                </button>
+              </div>
+              <Button 
+                onClick={handleShowAll}
+                variant="outline"
+                className="whitespace-nowrap px-6 py-3"
+              >
+                Hiển thị tất cả
               </Button>
             </div>
-          )}
-          <div className="flex flex-wrap md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
-          {groupedFoods.map(group => (
-            <RestaurantWithFoods
-              key={group.restaurant.id}
-              restaurant={group.restaurant}
-              foods={group.foods}
-            />
-          ))} 
+          </CardContent>
+        </Card>
+
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Desktop Filters Sidebar */}
+          <aside className="hidden lg:block w-80 shrink-0">
+            <Card className="sticky top-6 shadow-sm">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <SlidersHorizontal className="h-5 w-5 text-gray-700" />
+                  <h2 className="font-semibold text-lg text-gray-900">Bộ lọc</h2>
+                  {activeFiltersCount > 0 && (
+                    <Badge variant="secondary" className="ml-auto bg-orange-100 text-orange-700">
+                      {activeFiltersCount}
+                    </Badge>
+                  )}
+                </div>
+                <FiltersContent />
+              </CardContent>
+            </Card>
+          </aside>
+
+          {/* Main Content */}
+          <main className="flex-1 min-w-0">
+            {/* Mobile Filter Button + Sort */}
+            <div className="flex items-center justify-between mb-6 lg:mb-8">
+              <div className="flex items-center gap-4">
+                {/* Mobile Filters Button */}
+                <Button
+                  variant="outline"
+                  className="lg:hidden flex items-center gap-2"
+                  onClick={() => setShowMobileFilters(true)}
+                >
+                  <Filter className="h-4 w-4" />
+                  Bộ lọc
+                  {activeFiltersCount > 0 && (
+                    <Badge variant="secondary" className="bg-orange-100 text-orange-700 text-xs">
+                      {activeFiltersCount}
+                    </Badge>
+                  )}
+                </Button>
+
+                {/* Results count */}
+                <span className="text-sm text-gray-600">
+                  {loading ? "Đang tải..." : `${foods.length} kết quả`}
+                </span>
+              </div>
+
+              {/* Sort */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 hidden sm:block">Sắp xếp:</span>
+                <Select value={sortBy} onValueChange={handleSortChange}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sortOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Loading State */}
+            {loading && (
+              <div className="flex items-center justify-center py-16">
+                <div className="flex items-center gap-3 text-gray-600">
+                  <div className="w-6 h-6 border-2 border-orange-400 border-t-transparent rounded-full animate-spin"></div>
+                  Đang tải món ăn...
+                </div>
+              </div>
+            )}
+
+            {/* Empty States */}
+            {!loading && foods.length === 0 && !showingAll && debouncedSearch.trim() && (
+              <Card className="shadow-sm">
+                <CardContent className="text-center py-16">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CameraIcon className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Không tìm thấy món ăn</h3>
+                  <p className="text-gray-600 mb-4">Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc</p>
+                  <Button onClick={handleShowAll} variant="outline">
+                    Xem tất cả món ăn
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {!loading && foods.length === 0 && !debouncedSearch.trim() && !showingAll && (
+              <Card className="shadow-sm">
+                <CardContent className="text-center py-16">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Bắt đầu tìm kiếm</h3>
+                  <p className="text-gray-600 mb-4">Nhập tên món ăn để tìm kiếm hoặc xem tất cả</p>
+                  <Button onClick={handleShowAll}>
+                    Hiển thị tất cả món ăn
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Results - Properly Sorted Grouped Layout */}
+            {!loading && foods.length > 0 && (
+              <div className="space-y-8">
+                {sortedGroupedFoods.map((group, groupIndex) => (
+                  <div key={group.restaurant.id} className="space-y-4">
+                    {/* Restaurant Header with Click Functionality */}
+                    <div className="border-b border-gray-200 pb-4">
+                      <div 
+                        className="flex items-center gap-4 cursor-pointer hover:bg-gray-50 p-3 rounded-lg transition-colors group"
+                        onClick={() => handleRestaurantClick(group.restaurant.id)}
+                      >
+                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                          {group.restaurant.avatar ? (
+                            <img 
+                              src={group.restaurant.avatar} 
+                              alt={group.restaurant.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center">
+                              <span className="text-orange-600 font-bold text-lg">
+                                {group.restaurant.name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="text-xl font-semibold text-gray-900 truncate group-hover:text-orange-600 transition-colors">
+                              {group.restaurant.name}
+                            </h3>
+                            {/* Show ranking based on sort */}
+                            <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
+                              #{groupIndex + 1}
+                            </span>
+                            {/* External link icon */}
+                            <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-orange-600 transition-colors opacity-0 group-hover:opacity-100" />
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-gray-600">
+                            {group.restaurant.rating && (
+                              <span className="flex items-center gap-1">
+                                <span className="text-yellow-500">⭐</span>
+                                <span className="font-medium">{group.restaurant.rating}</span>
+                              </span>
+                            )}
+                            {group.restaurant.distance && (
+                              <span className="flex items-center gap-1">
+                                <span>📍</span>
+                                {group.restaurant.distance} km
+                              </span>
+                            )}
+                            <span className="flex items-center gap-1">
+                              <span>🍽️</span>
+                              {group.foods.length} món
+                            </span>
+                            {group.restaurant.deliveryTime && (
+                              <span className="flex items-center gap-1">
+                                <span>⏱️</span>
+                                {group.restaurant.deliveryTime} phút
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-orange-600 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
+                            Nhấp để xem chi tiết nhà hàng
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Horizontal Scrollable Foods - Maintain sort order within restaurant */}
+                    <div className="relative">
+                      <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2" 
+                           style={{ scrollSnapType: 'x mandatory' }}>
+                        {group.foods.map((food, foodIndex) => (
+                          <Card 
+                            key={food.id} 
+                            className="flex-shrink-0 w-64 overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer relative"
+                            style={{ scrollSnapAlign: 'start' }}
+                            onClick={() => handleFoodClick(food.id )}
+                          >
+                            <div className="aspect-[4/3] relative overflow-hidden">
+                              <img 
+                                src={food.image || food.imageUrls?.[0] || '/placeholder-food.jpg'} 
+                                alt={food.name}
+                                className="w-full h-full object-cover transition-transform duration-200 hover:scale-105"
+                              />
+                              {food.discountPercent && (
+                                <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-md shadow-sm">
+                                  -{food.discountPercent}%
+                                </div>
+                              )}
+                              {food.status === 'soldout' && (
+                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                  <span className="text-white font-semibold">Hết hàng</span>
+                                </div>
+                              )}
+                              {/* Show food ranking within restaurant for certain sorts */}
+                              {(sortBy === 'rating' || sortBy === 'most_buy' || sortBy === 'hot') && (
+                                <div className="absolute top-2 right-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full">
+                                  #{foodIndex + 1}
+                                </div>
+                              )}
+                            </div>
+                            <CardContent className="p-4">
+                              <h4 className="font-semibold text-gray-900 mb-1 line-clamp-1 text-sm hover:text-orange-600 transition-colors">
+                                {food.name}
+                              </h4>
+                              <p className="text-xs text-gray-600 mb-2 line-clamp-2 leading-relaxed">
+                                {food.description}
+                              </p>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="font-bold text-orange-600 text-sm">
+                                  {typeof food.price === 'number' 
+                                    ? food.price.toLocaleString('vi-VN') + 'đ'
+                                    : food.price
+                                  }
+                                </span>
+                                {food.rating && (
+                                  <span className="text-xs text-gray-600 flex items-center gap-1">
+                                    <span className="text-yellow-500">⭐</span>
+                                    {food.rating}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center justify-between text-xs text-gray-500">
+                                {food.preparationTime && (
+                                  <span className="flex items-center gap-1">
+                                    <span>⏱️</span>
+                                    {food.preparationTime} phút
+                                  </span>
+                                )}
+                                {food.soldCount && (
+                                  <span className="flex items-center gap-1">
+                                    <span>🔥</span>
+                                    Đã bán {food.soldCount}
+                                  </span>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                        
+                        {/* Show more card - also clickable */}
+                        {group.foods.length > 5 && (
+                          <Card 
+                            className="flex-shrink-0 w-32 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer border-dashed border-2 border-gray-300"
+                            onClick={() => handleRestaurantClick(group.restaurant.id)}
+                          >
+                            <CardContent className="p-4 h-full flex flex-col items-center justify-center text-center">
+                              <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center mb-2">
+                                <span className="text-orange-600 text-sm">→</span>
+                              </div>
+                              <span className="text-sm text-gray-600 font-medium">
+                                Xem thêm
+                              </span>
+                              <span className="text-xs text-gray-500 mt-1">
+                                +{group.foods.length - 5} món
+                              </span>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Alternative: Simple Sorted Food Grid with click functionality */}
+            {/* Uncomment this section if you prefer individual food cards
+            {!loading && foods.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {sortedIndividualFoods.map((food, index) => (
+                  <Card 
+                    key={food.id} 
+                    className="overflow-hidden hover:shadow-md transition-shadow relative cursor-pointer"
+                    onClick={() => handleFoodClick(food.id)}
+                  >
+                    <div className="aspect-square relative overflow-hidden">
+                      <img 
+                        src={food.image || food.imageUrls?.[0] || '/placeholder-food.jpg'} 
+                        alt={food.name}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform"
+                      />
+                      {food.discountPercent && (
+                        <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
+                          -{food.discountPercent}%
+                        </div>
+                      )}
+                      <div className="absolute top-2 right-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full">
+                        #{index + 1}
+                      </div>
+                    </div>
+                    <CardContent className="p-4">
+                      <h4 className="font-semibold text-gray-900 mb-1 line-clamp-1 hover:text-orange-600 transition-colors">
+                        {food.name}
+                      </h4>
+                      <p className="text-sm text-orange-600 mb-2 cursor-pointer hover:underline" onClick={(e) => { e.stopPropagation(); handleRestaurantClick(food.restaurant?.id || ''); }}>
+                        {food.restaurant?.name}
+                      </p>
+                      <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                        {food.description}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-orange-600">
+                          {typeof food.price === 'number' 
+                            ? food.price.toLocaleString('vi-VN') + 'đ'
+                            : food.price
+                          }
+                        </span>
+                        {food.rating && (
+                          <span className="text-sm text-gray-600">
+                            ⭐ {food.rating}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-gray-500 mt-2">
+                        {food.preparationTime && (
+                          <span>⏱️ {food.preparationTime} phút</span>
+                        )}
+                        {food.restaurant?.distance && (
+                          <span>📍 {food.restaurant.distance} km</span>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+            */}
+          </main>
+        </div>
+
+        {/* Mobile Filters Modal */}
+        {showMobileFilters && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <div className="fixed inset-0 bg-black/50" onClick={() => setShowMobileFilters(false)} />
+            <div className="fixed inset-x-0 bottom-0 bg-white rounded-t-2xl max-h-[85vh] overflow-hidden">
+              <div className="p-4 border-b">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">Bộ lọc</h2>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowMobileFilters(false)}
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
+              <div className="p-4 overflow-y-auto max-h-[calc(85vh-80px)]">
+                <FiltersContent />
+              </div>
+              <div className="p-4 border-t bg-white">
+                <Button
+                  className="w-full"
+                  onClick={() => setShowMobileFilters(false)}
+                >
+                  Áp dụng bộ lọc
+                </Button>
+              </div>
+            </div>
           </div>
-        </main>
-                  {/* Image search modal */}
-                  <ImageSearchModal open={openImageModal} onClose={() => setOpenImageModal(false)} />
+        )}
       </div>
+      
+      {/* Image search modal */}
+      <ImageSearchModal open={openImageModal} onClose={() => setOpenImageModal(false)} />
     </div>
   );
 }

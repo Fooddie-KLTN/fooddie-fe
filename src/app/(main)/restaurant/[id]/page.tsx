@@ -67,6 +67,7 @@ export default function RestaurantPage() {
         console.log('Token:', token);
         console.log('Restaurant Owner:', restaurant?.owner);
         if ( !token || !restaurant) {
+            console.warn('User is not authenticated or restaurant data is missing');
             // If not logged in, redirect to login or show auth modal
             //router.push('/auth/login');
             return;

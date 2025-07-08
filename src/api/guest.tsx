@@ -141,7 +141,8 @@ export const guestService = {
             radius: number = 5,
             categoryIds?: string[],
             minPrice?: number,
-            maxPrice?: number
+            maxPrice?: number,
+            sortBy?: string
         ): Promise<PaginatedResponse<FoodPreview>> {
             return apiRequest<PaginatedResponse<FoodPreview>>(`/foods/by-name`, "GET", {
                 query: {
@@ -154,6 +155,7 @@ export const guestService = {
                     ...(categoryIds && categoryIds.length > 0 ? { categoryIds: categoryIds.join(",") } : {}),
                     ...(minPrice !== undefined ? { minPrice } : {}),
                     ...(maxPrice !== undefined ? { maxPrice } : {}),
+                    ...(sortBy ? { sortBy } : {}),
                 }
             });
         },
