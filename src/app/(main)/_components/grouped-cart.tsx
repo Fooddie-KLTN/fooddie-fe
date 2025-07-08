@@ -140,7 +140,7 @@ export default function CartGroupByRestaurant({ restaurant, items }: Props) {
         </div>
         <Link
           href={`/checkout?restaurantId=${restaurant.id}`}
-          className="text-white bg-primary hover:bg-primary/80 px-4 py-2 rounded text-sm font-medium"
+          className="text-white bg-primary hover:text-primary hover:bg-white hover:border hover:border-black px-4 py-2 rounded text-sm font-medium"
         >
           Thanh toán
         </Link>
