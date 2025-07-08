@@ -16,10 +16,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { useSearchParams } from "next/navigation";
-import { CameraIcon, SlidersHorizontal, X, Filter } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation"; // Add useRouter import
+import { CameraIcon, SlidersHorizontal, X, Filter, ExternalLink } from "lucide-react";
 import ImageSearchModal from "../_components/image-search";
-//import RestaurantWithFoods from "../_components/restaurant-with-foods";
 
 type FoodSortType = 'newest' | 'nearby' | 'hot' | 'most_review' | 'most_buy' | 'rating' | 'price' | 'name';
 
@@ -52,6 +51,7 @@ const sortOptions: { label: string; value: FoodSortType }[] = [
 
 export default function FoodSearchPage() {
   const searchParams = useSearchParams();
+  const router = useRouter(); // Add router instance
   const initialSearch = searchParams.get("search") || "";
 
   const [search, setSearch] = useState(initialSearch);
@@ -211,6 +211,20 @@ export default function FoodSearchPage() {
     .finally(() => setLoading(false));
   }, [debouncedSearch, selectedCategories, minPrice, maxPrice, radius, sortBy, showingAll, allFoods, categories.length]);
 
+  // Handle restaurant click - navigate to restaurant detail page
+  const handleRestaurantClick = (restaurantId: string) => {
+    if (restaurantId) {
+      router.push(`/restaurant/${restaurantId}`);
+    }
+  };
+
+  // Handle food click - navigate to food detail page
+  const handleFoodClick = (foodId: string | undefined) => {
+    if (foodId) {
+      router.push(`/food/${foodId}`);
+    }
+  };
+
   // Handle category checkbox
   const handleCategory = (id: string) => {
     setSelectedCategories(prev =>
@@ -252,29 +266,89 @@ export default function FoodSearchPage() {
     setRadius(1000);
   };
 
-  // // Change the groupedFoods to a flatter structure for better display
-  // const displayFoods = useMemo(() => {
-  //   // Option 1: Show individual foods in a grid
-  //   return foods;
-  // }, [foods]);
-  
-  // Alternative: Group by restaurant but display differently
-  const groupedByRestaurant = useMemo(() => {
-    const map = new Map<string, { restaurant: Restaurant; foods: FoodPreview[] }>();
-  
-    for (const food of foods) {
-      const rid = food.restaurant?.id;
-      if (!rid) continue;
-  
-      if (!map.has(rid)) {
-        map.set(rid, { restaurant: food.restaurant, foods: [food] });
-      } else {
-        map.get(rid)!.foods.push(food);
+  // Create properly sorted foods that respect the sortBy parameter
+  const sortedFoods = useMemo(() => {
+    if (foods.length === 0) return [];
+
+    // Since the API doesn't seem to be sorting properly, let's sort client-side
+    const sorted = [...foods].sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          // Sort by creation date (assuming newer items have larger IDs or timestamps)
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        
+        case 'nearby':
+          // Sort by distance (this should already be working from API)
+          const aDistance = Number(a.restaurant?.distance) || 999;
+          const bDistance = Number(b.restaurant?.distance) || 999;
+          return aDistance - bDistance;
+        
+        case 'hot':
+        case 'most_buy':
+          // Sort by sold count
+          return (b.soldCount || 0) - (a.soldCount || 0);
+        
+        
+        case 'rating':
+          // Sort by rating (highest first)
+          const aRating = a.rating || 0;
+          const bRating = b.rating || 0;
+          if (bRating !== aRating) return bRating - aRating;
+          // If ratings are equal, sort by review count
+          return (b.rating || 0) - (a.rating || 0);
+        
+        case 'price':
+          // Sort by price (lowest first)
+          const aPrice = typeof a.price === 'number' ? a.price : parseFloat(a.price) || 0;
+          const bPrice = typeof b.price === 'number' ? b.price : parseFloat(b.price) || 0;
+          return aPrice - bPrice;
+        
+        case 'name':
+          // Sort alphabetically by name
+          return a.name.localeCompare(b.name, 'vi');
+        
+        default:
+          return 0;
       }
-    }
-  
-    return Array.from(map.values()).sort((a, b) => b.foods.length - a.foods.length);
-  }, [foods]);
+    });
+
+    return sorted;
+  }, [foods, sortBy]);
+
+  // Create a sorted display that respects the sort order
+  const sortedGroupedFoods = useMemo(() => {
+    if (sortedFoods.length === 0) return [];
+
+    // Group foods by restaurant while maintaining the order of first appearance
+    const restaurantOrder: string[] = [];
+    const groupMap = new Map<string, { restaurant: Restaurant; foods: FoodPreview[]; firstIndex: number }>();
+    
+    sortedFoods.forEach((food, index) => {
+      const rid = food.restaurant?.id;
+      if (!rid) return;
+      
+      if (!groupMap.has(rid)) {
+        restaurantOrder.push(rid);
+        groupMap.set(rid, { 
+          restaurant: food.restaurant, 
+          foods: [food],
+          firstIndex: index
+        });
+      } else {
+        groupMap.get(rid)!.foods.push(food);
+      }
+    });
+
+    // Sort restaurants based on the position of their first food in the sorted list
+    restaurantOrder.sort((a, b) => {
+      const aFirstIndex = groupMap.get(a)?.firstIndex ?? Infinity;
+      const bFirstIndex = groupMap.get(b)?.firstIndex ?? Infinity;
+      return aFirstIndex - bFirstIndex;
+    });
+
+    // Return the grouped foods in the correct order
+    return restaurantOrder.map(rid => groupMap.get(rid)!);
+  }, [sortedFoods]);
 
   const FiltersContent = () => (
     <div className="space-y-6">
@@ -492,14 +566,17 @@ export default function FoodSearchPage() {
               </Card>
             )}
 
-            {/* Results - Horizontal Scrollable Layout */}
+            {/* Results - Properly Sorted Grouped Layout */}
             {!loading && foods.length > 0 && (
               <div className="space-y-8">
-                {groupedByRestaurant.map(group => (
+                {sortedGroupedFoods.map((group, groupIndex) => (
                   <div key={group.restaurant.id} className="space-y-4">
-                    {/* Restaurant Header */}
+                    {/* Restaurant Header with Click Functionality */}
                     <div className="border-b border-gray-200 pb-4">
-                      <div className="flex items-center gap-4">
+                      <div 
+                        className="flex items-center gap-4 cursor-pointer hover:bg-gray-50 p-3 rounded-lg transition-colors group"
+                        onClick={() => handleRestaurantClick(group.restaurant.id)}
+                      >
                         <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                           {group.restaurant.avatar ? (
                             <img 
@@ -516,10 +593,18 @@ export default function FoodSearchPage() {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-xl font-semibold text-gray-900 truncate">
-                            {group.restaurant.name}
-                          </h3>
-                          <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="text-xl font-semibold text-gray-900 truncate group-hover:text-orange-600 transition-colors">
+                              {group.restaurant.name}
+                            </h3>
+                            {/* Show ranking based on sort */}
+                            <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
+                              #{groupIndex + 1}
+                            </span>
+                            {/* External link icon */}
+                            <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-orange-600 transition-colors opacity-0 group-hover:opacity-100" />
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-gray-600">
                             {group.restaurant.rating && (
                               <span className="flex items-center gap-1">
                                 <span className="text-yellow-500">⭐</span>
@@ -543,19 +628,23 @@ export default function FoodSearchPage() {
                               </span>
                             )}
                           </div>
+                          <div className="text-xs text-orange-600 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
+                            Nhấp để xem chi tiết nhà hàng
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Horizontal Scrollable Foods */}
+                    {/* Horizontal Scrollable Foods - Maintain sort order within restaurant */}
                     <div className="relative">
                       <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2" 
                            style={{ scrollSnapType: 'x mandatory' }}>
-                        {group.foods.map(food => (
+                        {group.foods.map((food, foodIndex) => (
                           <Card 
                             key={food.id} 
-                            className="flex-shrink-0 w-64 overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer"
+                            className="flex-shrink-0 w-64 overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer relative"
                             style={{ scrollSnapAlign: 'start' }}
+                            onClick={() => handleFoodClick(food.id )}
                           >
                             <div className="aspect-[4/3] relative overflow-hidden">
                               <img 
@@ -573,9 +662,15 @@ export default function FoodSearchPage() {
                                   <span className="text-white font-semibold">Hết hàng</span>
                                 </div>
                               )}
+                              {/* Show food ranking within restaurant for certain sorts */}
+                              {(sortBy === 'rating' || sortBy === 'most_buy' || sortBy === 'hot') && (
+                                <div className="absolute top-2 right-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full">
+                                  #{foodIndex + 1}
+                                </div>
+                              )}
                             </div>
                             <CardContent className="p-4">
-                              <h4 className="font-semibold text-gray-900 mb-1 line-clamp-1 text-sm">
+                              <h4 className="font-semibold text-gray-900 mb-1 line-clamp-1 text-sm hover:text-orange-600 transition-colors">
                                 {food.name}
                               </h4>
                               <p className="text-xs text-gray-600 mb-2 line-clamp-2 leading-relaxed">
@@ -613,9 +708,12 @@ export default function FoodSearchPage() {
                           </Card>
                         ))}
                         
-                        {/* Show more card */}
+                        {/* Show more card - also clickable */}
                         {group.foods.length > 5 && (
-                          <Card className="flex-shrink-0 w-32 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer border-dashed border-2 border-gray-300">
+                          <Card 
+                            className="flex-shrink-0 w-32 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer border-dashed border-2 border-gray-300"
+                            onClick={() => handleRestaurantClick(group.restaurant.id)}
+                          >
                             <CardContent className="p-4 h-full flex flex-col items-center justify-center text-center">
                               <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center mb-2">
                                 <span className="text-orange-600 text-sm">→</span>
@@ -630,39 +728,42 @@ export default function FoodSearchPage() {
                           </Card>
                         )}
                       </div>
-                      
-                      {/* Scroll indicators - optional */}
-                      <div className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-1 shadow-md hidden group-hover:block">
-                        <span className="text-gray-600 text-sm">→</span>
-                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Alternative: Simple Food Grid (commented out)
+            {/* Alternative: Simple Sorted Food Grid with click functionality */}
+            {/* Uncomment this section if you prefer individual food cards
             {!loading && foods.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {foods.map(food => (
-                  <Card key={food.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                {sortedIndividualFoods.map((food, index) => (
+                  <Card 
+                    key={food.id} 
+                    className="overflow-hidden hover:shadow-md transition-shadow relative cursor-pointer"
+                    onClick={() => handleFoodClick(food.id)}
+                  >
                     <div className="aspect-square relative overflow-hidden">
                       <img 
                         src={food.image || food.imageUrls?.[0] || '/placeholder-food.jpg'} 
                         alt={food.name}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover hover:scale-105 transition-transform"
                       />
                       {food.discountPercent && (
                         <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
                           -{food.discountPercent}%
                         </div>
                       )}
+                      <div className="absolute top-2 right-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full">
+                        #{index + 1}
+                      </div>
                     </div>
                     <CardContent className="p-4">
-                      <h4 className="font-semibold text-gray-900 mb-1 line-clamp-1">
+                      <h4 className="font-semibold text-gray-900 mb-1 line-clamp-1 hover:text-orange-600 transition-colors">
                         {food.name}
                       </h4>
-                      <p className="text-sm text-orange-600 mb-2">
+                      <p className="text-sm text-orange-600 mb-2 cursor-pointer hover:underline" onClick={(e) => { e.stopPropagation(); handleRestaurantClick(food.restaurant?.id || ''); }}>
                         {food.restaurant?.name}
                       </p>
                       <p className="text-sm text-gray-600 mb-2 line-clamp-2">
