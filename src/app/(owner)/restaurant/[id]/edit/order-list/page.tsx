@@ -3,12 +3,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useOrderCreatedSubscription } from '@/hooks/use-order-subscription';
-import { useOrderStatusSubscription } from '@/hooks/use-order-status-subscription';
 import { useAuth } from '@/context/auth-context';
 import { userApi } from '@/api/user';
 import { Order } from '@/interface';
 import { OrderDetailModal } from './_components/order-detail-modal';
 import { Bell, Clock, User, MapPin, CheckCircle, Package, XCircle, History, Filter, Eye } from 'lucide-react';
+import { useSubscription } from '@apollo/client';
+import { ORDER_STATUS_SUBSCRIPTION } from '@/lib/graphql/subcriptions/orderSubcriptions';
 
 export default function OrderListPage() {
   const { getToken } = useAuth();
@@ -22,6 +23,9 @@ export default function OrderListPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Track active subscriptions to prevent duplicates
+ // const [activeSubscriptions, setActiveSubscriptions] = useState<Set<string>>(new Set());
 
   // Initialize notification sound
   useEffect(() => {
@@ -58,9 +62,6 @@ export default function OrderListPage() {
     restaurantId || ''
   );
 
-  // Order status subscription
-  const { orderStatusUpdate } = useOrderStatusSubscription();
-  
   // Handle new orders with notification sound
   useEffect(() => {
     if (newOrders && newOrders.length > 0) {
@@ -84,31 +85,10 @@ export default function OrderListPage() {
     }
   }, [newOrders, clearNewOrders]);
 
-  // Handle order status updates from subscription
-  useEffect(() => {
-    if (orderStatusUpdate) {
-      const updateOrderInList = (orderList: Order[]) => 
-        orderList.map(order => 
-          order.id === orderStatusUpdate.id 
-            ? { ...order, status: orderStatusUpdate.status, updatedAt: orderStatusUpdate.updatedAt }
-            : order
-        );
-
-      setOrders(updateOrderInList);
-      setAllOrders(updateOrderInList);
-
-      // Update selected order if it's the one being updated
-      if (selectedOrder && selectedOrder.id === orderStatusUpdate.id) {
-        setSelectedOrder({
-          ...selectedOrder,
-          status: orderStatusUpdate.status,
-          updatedAt: orderStatusUpdate.updatedAt
-        });
-      }
-
-      console.log(`Order ${orderStatusUpdate.id} status updated to: ${orderStatusUpdate.status}`);
-    }
-  }, [orderStatusUpdate, selectedOrder]);
+  // Get all incomplete orders that need status monitoring
+  const incompleteOrders = allOrders.filter(order => 
+    order.status !== 'completed' && order.status !== 'canceled'
+  );
 
   // Handle order status update
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
@@ -340,6 +320,43 @@ export default function OrderListPage() {
     </div>
   );
 
+  // Component to handle individual order status subscriptions
+  const OrderStatusSubscriber = ({ order }: { order: Order }) => {
+    const { data: orderStatusData } = useSubscription(ORDER_STATUS_SUBSCRIPTION, {
+      variables: { userId: order.user?.id },
+      skip: !order.user?.id || order.status === 'completed' || order.status === 'canceled',
+    });
+
+    useEffect(() => {
+      if (orderStatusData?.orderStatusUpdated && orderStatusData.orderStatusUpdated.id === order.id) {
+        const statusUpdate = orderStatusData.orderStatusUpdated;
+        
+        const updateOrderInList = (orderList: Order[]) => 
+          orderList.map(o => 
+            o.id === statusUpdate.id 
+              ? { ...o, status: statusUpdate.status, updatedAt: statusUpdate.updatedAt }
+              : o
+          );
+
+        setOrders(updateOrderInList);
+        setAllOrders(updateOrderInList);
+
+        // Update selected order if it's the one being updated
+        if (selectedOrder && selectedOrder.id === statusUpdate.id) {
+          setSelectedOrder({
+            ...selectedOrder,
+            status: statusUpdate.status,
+            updatedAt: statusUpdate.updatedAt
+          });
+        }
+
+        console.log(`Order ${statusUpdate.id} status updated to: ${statusUpdate.status}`);
+      }
+    }, [orderStatusData, order.id, order.user?.id, selectedOrder]);
+
+    return null;
+  };
+
   if (!restaurantId) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -353,6 +370,11 @@ export default function OrderListPage() {
   
   return (
     <div className="min-h-screen bg-gray-50 p-4">
+      {/* Add status subscribers for incomplete orders */}
+      {incompleteOrders.map(order => (
+        <OrderStatusSubscriber key={order.id} order={order} />
+      ))}
+
       <div className="max-w-6xl mx-auto space-y-8">
         {/* NEW ORDERS SECTION */}
         <div>
