@@ -19,6 +19,8 @@ import { CameraIcon } from "lucide-react";
 import ImageSearchModal from "../_components/image-search";
 import RestaurantWithFoods from "../_components/restaurant-with-foods";
 
+type FoodSortType = 'newest' | 'nearby' | 'hot' | 'most_review' | 'most_buy' | 'rating' | 'price' | 'name';
+
 const priceRanges = [
   { label: "Dưới 50.000đ", value: "under50", min: 0, max: 50000 },
   { label: "50.000đ - 100.000đ", value: "50to100", min: 50000, max: 100000 },
@@ -35,6 +37,17 @@ const radiusOptions = [
   { label: "Tất cả", value: 999999 }, // Use a large number for "All"
 ];
 
+const sortOptions: { label: string; value: FoodSortType }[] = [
+  { label: "Mới nhất", value: "newest" },
+  { label: "Gần nhất", value: "nearby" },
+  { label: "Phổ biến", value: "hot" },
+  { label: "Nhiều đánh giá", value: "most_review" },
+  { label: "Bán chạy", value: "most_buy" },
+  { label: "Đánh giá cao", value: "rating" },
+  { label: "Giá tăng dần", value: "price" },
+  { label: "Tên A-Z", value: "name" },
+];
+
 export default function FoodSearchPage() {
   const searchParams = useSearchParams();
   const initialSearch = searchParams.get("search") || "";
@@ -48,6 +61,7 @@ export default function FoodSearchPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedPrices, setSelectedPrices] = useState<string[]>([]);
   const [radius, setRadius] = useState(1000);
+  const [sortBy, setSortBy] = useState<FoodSortType>('newest');
   const [loading, setLoading] = useState(false);
   const [showingAll, setShowingAll] = useState(true); // Start with showing all
   const [openImageModal, setOpenImageModal] = useState(false);
@@ -65,12 +79,12 @@ export default function FoodSearchPage() {
   // Check if all categories are selected
   const isAllCategoriesSelected = selectedCategories.length === categories.length && categories.length > 0;
 
-
   useEffect(() => {
     if (foods.length > 0) {
       console.log("🧾 First food item:", foods[0]);
     }
   }, [foods]);
+
   // Fetch categories and initial foods
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -94,7 +108,8 @@ export default function FoodSearchPage() {
           radius,
           fetchedCategories.map(cat => cat.id), // Use all category IDs
           undefined,
-          undefined
+          undefined,
+          sortBy
         );
         setAllFoods(foodsRes.items ?? []);
         setFoods(foodsRes.items ?? []);
@@ -121,7 +136,8 @@ export default function FoodSearchPage() {
         radius,
         selectedCategories,
         minPrice,
-        maxPrice === Infinity ? undefined : maxPrice
+        maxPrice === Infinity ? undefined : maxPrice,
+        sortBy
       );
       setAllFoods(res.items ?? []);
       setFoods(res.items ?? []);
@@ -174,7 +190,8 @@ export default function FoodSearchPage() {
       radius,
       selectedCategories,
       minPrice,
-      maxPrice === Infinity ? undefined : maxPrice
+      maxPrice === Infinity ? undefined : maxPrice,
+      sortBy
     )
     .then(res => {
       const nameSearch = debouncedSearch.trim().toLowerCase();
@@ -184,9 +201,8 @@ export default function FoodSearchPage() {
       );
       setFoods(matched);
     })
-    
-      .finally(() => setLoading(false));
-  }, [debouncedSearch, selectedCategories, minPrice, maxPrice, radius, showingAll, allFoods, categories.length]);
+    .finally(() => setLoading(false));
+  }, [debouncedSearch, selectedCategories, minPrice, maxPrice, radius, sortBy, showingAll, allFoods, categories.length]);
 
   // Handle category checkbox
   const handleCategory = (id: string) => {
@@ -211,6 +227,11 @@ export default function FoodSearchPage() {
     );
   };
 
+  // Handle sort change
+  const handleSortChange = (value: FoodSortType) => {
+    setSortBy(value);
+  };
+
   // Handle show all button
   const handleShowAll = () => {
     setSearch("");
@@ -233,7 +254,6 @@ export default function FoodSearchPage() {
   
     return Array.from(map.values()).sort((a, b) => b.foods.length - a.foods.length);
   }, [foods]);
-  
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -301,7 +321,7 @@ export default function FoodSearchPage() {
               </label>
             ))}
           </div>
-          <div>
+          <div className="mb-6">
             <h2 className="font-semibold mb-2">Bán kính</h2>
             <Select value={radius.toString()} onValueChange={val => setRadius(Number(val))}>
               <SelectTrigger className="border rounded px-2 py-1 w-full">
@@ -311,6 +331,21 @@ export default function FoodSearchPage() {
                 {radiusOptions.map(opt => (
                   <SelectItem key={opt.value} value={opt.value.toString()}>
                     {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <h2 className="font-semibold mb-2">Sắp xếp theo</h2>
+            <Select value={sortBy} onValueChange={handleSortChange}>
+              <SelectTrigger className="border rounded px-2 py-1 w-full">
+                <SelectValue placeholder="Chọn cách sắp xếp" />
+              </SelectTrigger>
+              <SelectContent>
+                {sortOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -342,9 +377,10 @@ export default function FoodSearchPage() {
           ))} 
           </div>
         </main>
-                  {/* Image search modal */}
-                  <ImageSearchModal open={openImageModal} onClose={() => setOpenImageModal(false)} />
       </div>
+      
+      {/* Image search modal */}
+      <ImageSearchModal open={openImageModal} onClose={() => setOpenImageModal(false)} />
     </div>
   );
 }
