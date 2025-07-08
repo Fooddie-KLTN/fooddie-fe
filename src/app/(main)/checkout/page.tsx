@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from "react";
 import { useCheckout } from './_hook/checkout';
 import { CartItemsSection } from './_components/cart-item-section';
 import { AddressSection } from './_components/address-section';
@@ -11,7 +12,7 @@ import { useEffect, useState } from "react";
 import { GuestPromotionResponse, guestService } from "@/api/guest";
 import MapboxSearch from '@/components/mapbox-search';
 
-export default function CheckoutPage() {
+function CheckoutPageInner() {
   const [promotions, setPromotions] = useState<GuestPromotionResponse[]>([]);
   const [selectedAddressType, setSelectedAddressType] = useState<"saved" | "custom">("saved");
   const [selectedAddress, setSelectedAddress] = useState<{
@@ -167,5 +168,13 @@ export default function CheckoutPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<div>Đang tải trang thanh toán...</div>}>
+      <CheckoutPageInner />
+    </Suspense>
   );
 }

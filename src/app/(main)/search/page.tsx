@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { guestService } from "@/api/guest";
 import { FoodPreview, Category, Restaurant } from "@/interface";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -49,7 +49,7 @@ const sortOptions: { label: string; value: FoodSortType }[] = [
   { label: "Tên A-Z", value: "name" },
 ];
 
-export default function FoodSearchPage() {
+function SearchPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter(); // Add router instance
   const initialSearch = searchParams.get("search") || "";
@@ -835,5 +835,13 @@ export default function FoodSearchPage() {
       {/* Image search modal */}
       <ImageSearchModal open={openImageModal} onClose={() => setOpenImageModal(false)} />
     </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div>Loading search...</div>}>
+      <SearchPageInner />
+    </Suspense>
   );
 }
