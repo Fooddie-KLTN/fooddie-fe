@@ -156,30 +156,11 @@ export default function UserActions({ openModal }: UserActionsProps) {
 return (
   <>
     {/* Favorite Button (left) */}
-    <div className="flex-1">
-      {user ? (
-        <Button
-          variant="ghost"
-          className="w-full text-base border-primary hover:bg-primary/10 transition-colors"
-        >
-          <Link href="/learning">Món yêu thích</Link>
-        </Button>
-      ) : null}
-    </div>
 
     {/* Action buttons (wishlist, cart, notifications) */}
     <div className="flex-1 flex gap-2 items-center justify-center">
       {user ? (
         <>
-          {/* Wishlist */}
-          <Button
-            variant="ghost"
-            className="bg-transparent hover:bg-primary/10 transition-colors"
-            size="icon"
-            aria-label="Wishlist"
-          >
-            <HeartIcon className="h-5 w-5" />
-          </Button>
 
           {/* Cart button */}
           <button

@@ -1,11 +1,12 @@
 import { Order } from '@/interface';
-import { X, User, MapPin, Clock, Phone, Package, DollarSign, Truck, MessageSquare } from 'lucide-react';
+import { X, User, MapPin, Clock, Phone, Package, DollarSign, Truck, MessageSquare, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useSubscription } from '@apollo/client';
 import { SHIPPER_LOCATION_SUBSCRIPTION } from '@/lib/graphql/subcriptions/shipperSubcriptions';
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import { Loader2 } from 'lucide-react';
 
 // Map component loaded dynamically
 const Map = dynamic(() => import("@/components/common/map"), { ssr: false });
@@ -44,6 +45,8 @@ interface OrderDetailModalProps {
   onClose: () => void;
   onUpdateStatus?: (orderId: string, newStatus: string) => void;
   isUpdating?: boolean;
+  refetchOrders?: () => Promise<void>;
+  isLoading?: boolean; // Add loading prop
 }
 
 export function OrderDetailModal({ 
@@ -51,7 +54,9 @@ export function OrderDetailModal({
   isOpen, 
   onClose, 
   onUpdateStatus,
-  isUpdating = false 
+  isUpdating = false,
+  refetchOrders,
+  isLoading = false // Add default value
 }: OrderDetailModalProps) {
   const [shipperLocationData, setShipperLocationData] = useState<{ shipperLocationUpdated: ShipperLocation } | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | undefined>(undefined);
@@ -68,13 +73,16 @@ export function OrderDetailModal({
 
   // Add this useEffect to refetch order when status changes to shipper_received or delivering
   useEffect(() => {
-    if (order && (order.status === "shipper_received" || order.status === "delivering")) {
-      // Trigger a refetch of the order to get shipper information
-      // This assumes you have access to a refetch function or can emit an event
-      console.log(`[DEBUG] Order status changed to ${order.status}, should refetch order data`);
+    if (
+      order &&
+      (order.status === "shipper_received" || order.status === "delivering") &&
+      typeof refetchOrders === "function"
+    ) {
+      refetchOrders();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order?.status]);
-
+  
   if (!isOpen || !order) return null;
 
   const formatTime = (dateString: string) => {
@@ -124,23 +132,48 @@ export function OrderDetailModal({
         );
       case 'confirmed':
         return (
-          <Button
-            onClick={() => onUpdateStatus(order.id, 'delivering')}
-            disabled={isUpdating}
-            className="bg-purple-600 hover:bg-purple-700 text-white"
-          >
-            {isUpdating ? 'Đang xử lý...' : 'Bắt đầu giao hàng'}
-          </Button>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-blue-700 text-sm font-medium flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Đã xác nhận - Hệ thống đang tìm tài xế giao hàng
+            </p>
+          </div>
+        );
+      case 'shipper_received':
+        return (
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <p className="text-purple-700 text-sm font-medium flex items-center gap-2">
+              <Truck className="w-4 h-4" />
+              Tài xế đã nhận đơn hàng và đang trên đường đến nhà hàng
+            </p>
+          </div>
         );
       case 'delivering':
         return (
-          <Button
-            onClick={() => onUpdateStatus(order.id, 'completed')}
-            disabled={isUpdating}
-            className="bg-green-600 hover:bg-green-700 text-white"
-          >
-            {isUpdating ? 'Đang xử lý...' : 'Hoàn thành đơn hàng'}
-          </Button>
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <p className="text-purple-700 text-sm font-medium flex items-center gap-2">
+              <Package className="w-4 h-4" />
+              Tài xế đang giao hàng đến khách hàng
+            </p>
+          </div>
+        );
+      case 'completed':
+        return (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <p className="text-green-700 text-sm font-medium flex items-center gap-2">
+              <CheckCircle className="w-4 h-4" />
+              Đơn hàng đã được giao thành công
+            </p>
+          </div>
+        );
+      case 'canceled':
+        return (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-700 text-sm font-medium flex items-center gap-2">
+              <XCircle className="w-4 h-4" />
+              Đơn hàng đã bị hủy
+            </p>
+          </div>
         );
       default:
         return null;
@@ -149,11 +182,21 @@ export function OrderDetailModal({
 
   // Find shipper info if available
   const shipper = order.shippingDetail?.shipper;
-  const hasShippingDetail = order.shippingDetail && (order.status === "shipper_received" || order.status === "delivering");
+  const hasShippingDetail = !!order.shippingDetail;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+      <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-auto shadow-2xl relative">
+        {/* Loading overlay */}
+        {isLoading && (
+          <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
+            <div className="flex flex-col items-center">
+              <Loader2 className="animate-spin w-12 h-12 text-amber-600 mx-auto mb-4" />
+              <p className="text-gray-600">Đang tải thông tin đơn hàng...</p>
+            </div>
+          </div>
+        )}
+        
         {/* Header */}
         <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 text-white">
           <div className="flex items-center justify-between">
@@ -289,11 +332,11 @@ export function OrderDetailModal({
               </div>
             </div>
 
-            {/* Shipping & Map Section - Only show when status is shipper_received or delivering */}
+            {/* Shipping & Map Section - Show if shippingDetail exists */}
             {hasShippingDetail && (
               <div className="space-y-6">
-                {/* Shipper Info */}
-                {shipper && (
+                {/* Shipper Info - Only show when shipper is assigned and status is shipper_received or delivering */}
+                {shipper && (order.status === "shipper_received" || order.status === "delivering") && (
                   <div className="bg-purple-50 rounded-xl p-4 border border-purple-200">
                     <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                       <Truck className="w-5 h-5 text-purple-600" />
@@ -311,10 +354,9 @@ export function OrderDetailModal({
                           {shipper.phone}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
-                          {order.status === "shipper_received" 
-                            ? "Tài xế đang đến nhà hàng" 
-                            : "Tài xế đang giao hàng"
-                          }
+                          {order.status === "shipper_received"
+                            ? "Tài xế đang đến nhà hàng"
+                            : "Tài xế đang giao hàng"}
                         </p>
                       </div>
                     </div>
@@ -333,29 +375,37 @@ export function OrderDetailModal({
                   </div>
                 )}
 
-                {/* Map Section */}
+                {/* Map Section - Always show map if shippingDetail exists */}
                 <div className="bg-gray-50 rounded-xl p-4">
                   <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                     <MapPin className="w-5 h-5 text-amber-600" />
                     Theo dõi đơn hàng
                   </h3>
                   <div className="w-full h-[300px] rounded-lg overflow-hidden bg-gray-100">
-                    {order.shippingDetail?.shipper?.id && (
+                    {/* Subscribe to shipper location only when shipper is assigned and status is shipper_received or delivering */}
+                    {shipper && (order.status === "shipper_received" || order.status === "delivering") && (
                       <ShipperLocationSubscriber
-                        shipperId={order.shippingDetail.shipper.id}
+                        shipperId={shipper.id}
                         onData={setShipperLocationData}
                       />
                     )}
                     <Map
-                      shipperLocation={shipperLocationData?.shipperLocationUpdated}
+                      shipperLocation={
+                        shipper && (order.status === "shipper_received" || order.status === "delivering")
+                          ? shipperLocationData?.shipperLocationUpdated
+                          : undefined
+                      }
                       userLocation={userLocation}
                     />
                   </div>
                   <p className="text-xs text-gray-500 mt-2 text-center">
-                    {order.status === "shipper_received" 
-                      ? "Tài xế đang trên đường đến nhà hàng" 
-                      : "Tài xế đang giao hàng đến khách hàng"
-                    }
+                    {shipper
+                      ? order.status === "shipper_received"
+                        ? "Tài xế đang trên đường đến nhà hàng"
+                        : order.status === "delivering"
+                        ? "Tài xế đang giao hàng đến khách hàng"
+                        : "Đang chờ tài xế nhận đơn"
+                      : "Đang tìm tài xế giao hàng..."}
                   </p>
                 </div>
               </div>

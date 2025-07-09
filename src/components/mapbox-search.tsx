@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import mapboxgl from 'mapbox-gl';
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,8 @@ interface MapboxSearchProps {
   height?: string;
   placeholder?: string;
   className?: string;
-  debounceTime?: number; // Milliseconds to debounce the search
+  debounceTime?: number;
+  useUserLocation?: boolean; // Whether to use user's current location
 }
 
 // Custom hook for debouncing
@@ -40,6 +41,51 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+// Custom hook for geolocation
+function useGeolocation(enabled: boolean = true) {
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(enabled);
+
+  useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      setError('Geolocation is not supported by this browser.');
+      setLoading(false);
+      return;
+    }
+
+    const success = (position: GeolocationPosition) => {
+      setLocation({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      });
+      setError(null);
+      setLoading(false);
+    };
+
+    const error = (error: GeolocationPositionError) => {
+      if (error.code === error.PERMISSION_DENIED) {
+        setError('Permission denied. Please allow location access.');
+      }
+      setError('Unable to retrieve your location. Please allow location access.');
+      setLoading(false);
+    };
+
+    navigator.geolocation.getCurrentPosition(success, error, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 600000, // 10 minutes
+    });
+  }, [enabled]);
+
+  return useMemo(() => ({ location, error, loading }), [location, error, loading]);
+}
+
 const MapboxSearchComponent = ({ 
   onAddressSelect, 
   initialAddress = '',
@@ -48,7 +94,8 @@ const MapboxSearchComponent = ({
   height = '300px',
   placeholder = "Tìm địa chỉ...", 
   className = "",
-  debounceTime = 1500 // Increased debounce time to reduce API calls
+  debounceTime = 1500,
+  useUserLocation = true
 }: MapboxSearchProps) => {
   const geocoderContainerRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -59,16 +106,39 @@ const MapboxSearchComponent = ({
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markerRef = useRef<mapboxgl.Marker | null>(null);
 
+  // Get user's geolocation
+  const { location: userLocation, loading: geoLoading, error: geoError } = useGeolocation(useUserLocation);
+
   // Convert potential string values to numbers
   const parsedLatitude = initialLatitude ? parseFloat(String(initialLatitude)) : undefined;
   const parsedLongitude = initialLongitude ? parseFloat(String(initialLongitude)) : undefined;
 
-  // Default coordinates for Vietnam (centered on Hanoi)
-  const defaultCoordinates = {
-    lng: parsedLongitude || 105.8342,
-    lat: parsedLatitude || 21.0278,
-    zoom: parsedLatitude && parsedLongitude ? 16 : 12
-  };
+  // Memoize default coordinates calculation
+  const defaultCoordinates = useMemo(() => {
+    // Priority: provided coordinates > user location > default Vietnam
+    if (parsedLatitude && parsedLongitude) {
+      return {
+        lng: parsedLongitude,
+        lat: parsedLatitude,
+        zoom: 16
+      };
+    }
+    
+    if (useUserLocation && userLocation && !geoError) {
+      return {
+        lng: userLocation.lng,
+        lat: userLocation.lat,
+        zoom: 16
+      };
+    }
+    
+    // Default to Vietnam (centered on Hanoi)
+    return {
+      lng: 105.8342,
+      lat: 21.0278,
+      zoom: 12
+    };
+  }, [parsedLatitude, parsedLongitude, useUserLocation, userLocation, geoError]);
 
   // Effect to handle debounced search
   useEffect(() => {
@@ -78,6 +148,11 @@ const MapboxSearchComponent = ({
   }, [debouncedSearchQuery]);
 
   useEffect(() => {
+    // Wait for geolocation to complete if we're using it
+    if (useUserLocation && geoLoading) {
+      return;
+    }
+
     // Initialize Mapbox
     if (!geocoderContainerRef.current || !mapContainerRef.current) return;
     
@@ -112,6 +187,7 @@ const MapboxSearchComponent = ({
       language: 'vi',
       placeholder,
       marker: false, // We'll add our own marker
+      proximity: userLocation ? { longitude: userLocation.lng, latitude: userLocation.lat } : undefined, // Fix: use object instead of array
     });
     
     // Store geocoder in ref for access in the debounced effect
@@ -206,6 +282,35 @@ const MapboxSearchComponent = ({
         .addTo(map);
       
       markerRef.current = marker;
+    } else if (useUserLocation && userLocation && !geoError && !initialAddress) {
+      // Auto-populate with user location if no initial address provided
+      fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${userLocation.lng},${userLocation.lat}.json?access_token=${mapboxToken}&language=vi`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.features && data.features.length > 0) {
+            const address = data.features[0].place_name;
+            
+            // Update search input with user's address
+            if (geocoderRef.current) {
+              geocoderRef.current.setInput(address);
+            }
+            
+            // Add marker at user's location
+            const marker = new mapboxgl.Marker({ color: '#4285F4' }) // Blue for user location
+              .setLngLat([userLocation.lng, userLocation.lat])
+              .addTo(map);
+            
+            markerRef.current = marker;
+            
+            // Pass user's location to parent
+            onAddressSelect({
+              full: address,
+              latitude: userLocation.lat,
+              longitude: userLocation.lng,
+            });
+          }
+        })
+        .catch(err => console.error('Error getting user location address:', err));
     }
 
     // Initialize with address if provided
@@ -230,18 +335,37 @@ const MapboxSearchComponent = ({
         markerRef.current = null;
       }
     };
-  // Only rerun if these values actually change
+  // Include userLocation and geoLoading in dependencies
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialAddress, parsedLatitude, parsedLongitude, placeholder]);
+  }, [initialAddress, parsedLatitude, parsedLongitude, placeholder, userLocation, geoLoading, defaultCoordinates]);
 
   return (
     <div className={`mapbox-search-container ${className}`}>
       {/* Geocoder container */}
       <div ref={geocoderContainerRef} className="w-full mb-3" />
       
-      {!isLoaded && (
+      {/* Loading states */}
+      {((useUserLocation && geoLoading) || !isLoaded) && (
         <div className="my-2 w-full">
-          <Input disabled placeholder="Đang tải..." />
+          <Input 
+            disabled 
+            placeholder={
+              useUserLocation && geoLoading 
+                ? "Đang xác định vị trí của bạn..." 
+                : "Đang tải..."
+            } 
+          />
+        </div>
+      )}
+      
+      {/* Geolocation error */}
+      {useUserLocation && geoError && (
+        <div className="my-2 w-full">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+            <p className="text-sm text-yellow-800">
+              {geoError}
+            </p>
+          </div>
         </div>
       )}
       
@@ -255,6 +379,9 @@ const MapboxSearchComponent = ({
       {/* Help text */}
       <p className="text-xs text-gray-500 mt-1">
         *Bạn có thể nhấp vào bản đồ để chọn vị trí chính xác hơn
+        {useUserLocation && userLocation && (
+          <span className="text-blue-600"> • Vị trí hiện tại được hiển thị bằng chấm xanh</span>
+        )}
       </p>
     </div>
   );

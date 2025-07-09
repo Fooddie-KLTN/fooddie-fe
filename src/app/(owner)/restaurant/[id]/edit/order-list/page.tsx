@@ -10,6 +10,7 @@ import { OrderDetailModal } from './_components/order-detail-modal';
 import { Bell, Clock, User, MapPin, CheckCircle, Package, XCircle, History, Filter, Eye } from 'lucide-react';
 import { useSubscription } from '@apollo/client';
 import { ORDER_STATUS_SUBSCRIPTION } from '@/lib/graphql/subcriptions/orderSubcriptions';
+import { adminService } from '@/api/admin';
 
 export default function OrderListPage() {
   const { getToken } = useAuth();
@@ -22,6 +23,7 @@ export default function OrderListPage() {
   const [loading, setLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Track active subscriptions to prevent duplicates
@@ -36,25 +38,23 @@ export default function OrderListPage() {
   }, []);
 
   // Fetch all orders for the restaurant
-  useEffect(() => {
-    const fetchAllOrders = async () => {
-      if (!restaurantId) return;
-      
-      try {
-        setLoading(true);
-        const token = getToken();
-        if (token) {
-          const response = await userApi.order.getOrdersByMyRestaurant(token, 1, 50);
-          console.log('Fetched orders:', response);
-          setAllOrders(response.items || []);
-        }
-      } catch (error) {
-        console.error('Lỗi khi lấy danh sách đơn hàng:', error);
-      } finally {
-        setLoading(false);
+  const fetchAllOrders = async () => {
+    if (!restaurantId) return;
+    try {
+      setLoading(true);
+      const token = getToken();
+      if (token) {
+        const response = await userApi.order.getOrdersByMyRestaurant(token, 1, 50);
+        setAllOrders(response.items || []);
       }
-    };
+    } catch (error) {
+      console.error('Lỗi khi lấy danh sách đơn hàng:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchAllOrders();
   }, [restaurantId, getToken]);
   
@@ -195,19 +195,36 @@ export default function OrderListPage() {
         return (
           <span className="text-xs text-gray-500 italic flex items-center space-x-1">
             <CheckCircle className="h-3 w-3 text-blue-600" />
-            <span>Đã xác nhận</span>
+            <span>Đã xác nhận - Đang tìm tài xế</span>
+          </span>
+        );
+      case 'shipper_received':
+        return (
+          <span className="text-xs text-gray-500 italic flex items-center space-x-1">
+            <Package className="h-3 w-3 text-purple-600" />
+            <span>Tài xế đã nhận đơn</span>
           </span>
         );
       case 'delivering':
         return (
-          <button 
-            onClick={() => handleUpdateOrderStatus(order.id, 'completed')}
-            disabled={isUpdating}
-            className="bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white px-3 py-1 text-sm rounded transition-colors flex items-center space-x-1"
-          >
-            <Package className="h-3 w-3" />
-            <span>{isUpdating ? 'Đang xử lý...' : 'Hoàn thành'}</span>
-          </button>
+          <span className="text-xs text-gray-500 italic flex items-center space-x-1">
+            <Package className="h-3 w-3 text-purple-600" />
+            <span>Đang giao hàng</span>
+          </span>
+        );
+      case 'completed':
+        return (
+          <span className="text-xs text-gray-500 italic flex items-center space-x-1">
+            <CheckCircle className="h-3 w-3 text-green-600" />
+            <span>Đã hoàn thành</span>
+          </span>
+        );
+      case 'canceled':
+        return (
+          <span className="text-xs text-gray-500 italic flex items-center space-x-1">
+            <XCircle className="h-3 w-3 text-red-600" />
+            <span>Đã hủy</span>
+          </span>
         );
       default:
         return (
@@ -218,9 +235,29 @@ export default function OrderListPage() {
     }
   };
 
-  const handleViewOrder = (order: Order) => {
+  // Modify handleViewOrder to use type assertion
+  const handleViewOrder = async (order: Order) => {
+    // First set the selected order to show something immediately
     setSelectedOrder(order);
     setIsModalOpen(true);
+    setModalLoading(true);
+    
+    try {
+      const token = await getToken();
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+      
+      console.log(`[DEBUG] Fetching fresh order data for ID: ${order.id}`);
+      // Get fresh order data using adminService and cast it to Order type
+      const freshOrderData = await adminService.Order.getOrderById(token, order.id);
+      setSelectedOrder(freshOrderData as unknown as Order);
+    } catch (error) {
+      console.error('Error fetching order details:', error);
+      // Keep the initial order data if fetch fails
+    } finally {
+      setModalLoading(false);
+    }
   };
 
   const handleCloseModal = () => {
@@ -507,6 +544,8 @@ export default function OrderListPage() {
         onClose={handleCloseModal}
         onUpdateStatus={handleUpdateOrderStatus}
         isUpdating={selectedOrder ? updatingOrders.has(selectedOrder.id) : false}
+        refetchOrders={fetchAllOrders}
+        isLoading={modalLoading} // Pass the loading state
       />
     </div>
   );
