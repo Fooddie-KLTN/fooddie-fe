@@ -85,7 +85,7 @@ export default function NavigationItems({
               <button
                 title="Toggle dropdown"
                 type="button"
-                className="w-full font-semibold flex items-center justify-between gap-1 text-teriary text-base p-2 rounded-md hover:bg-gray-50 transition-colors"
+                className="w-full font-semibold text-white hover:text-primary flex items-center justify-between gap-1 text-teriary text-base p-2 rounded-md hover:bg-gray-50 transition-colors"
                 onClick={() => toggleDropdown(idx)}
                 aria-expanded={
                   dropdownState.idx === idx && dropdownState.isActive
@@ -112,7 +112,7 @@ export default function NavigationItems({
                       left: 0,
                     }}
                   >
-                    <ul className="mx-auto mt-2 flex flex-col gap-2 lg:p-4">
+                    <ul className="mx-auto mt-2  flex flex-col gap-2 lg:p-4">
                       {item.navs?.map((navItem, subIdx: number) => (
                         <li
                           key={`subnav-${idx}-${subIdx}`}
@@ -129,7 +129,7 @@ export default function NavigationItems({
             // Regular navigation link
             <Link
               href={item.path}
-              className="block text-navigation p-2 rounded-md hover:bg-gray-50 transition-colors font-semibold"
+              className="block text-navigation text-white hover:text-primary p-2 rounded-md hover:bg-gray-50 transition-colors font-semibold"
             >
               {item.title}
             </Link>

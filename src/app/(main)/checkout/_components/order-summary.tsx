@@ -34,7 +34,6 @@ interface OrderSummaryProps {
 
 export const OrderSummary = ({
   displayCartItems,
-  totalPrice,
   shippingFee,
   distance,
   total,

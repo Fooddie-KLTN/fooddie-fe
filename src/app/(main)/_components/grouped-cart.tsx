@@ -115,6 +115,7 @@ export default function CartGroupByRestaurant({ restaurant, items }: Props) {
                 {/* Quantity */}
                 <div className="flex items-center gap-2 mt-1">
                   <input
+                  
                     type="number"
                     min={1}
                     className="w-14 border rounded text-center text-sm"

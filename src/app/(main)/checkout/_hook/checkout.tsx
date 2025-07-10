@@ -1,8 +1,8 @@
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { useCart } from '@/context/cart-context';
 import { useAuth } from '@/context/auth-context';
+import { useNotification } from '@/components/ui/notification';
 import { userApi } from '@/api/user';
 import { Address } from '@/interface';
 import { CalculateOrderResponse, OrderResponse } from '@/api/response.interface';
@@ -21,6 +21,7 @@ interface UseCheckoutProps {
 export const useCheckout = ({ selectedAddressType, selectedAddress }: UseCheckoutProps) => {
   const searchParams = useSearchParams();
   const restaurantId = searchParams.get('restaurantId');
+  const { showNotification } = useNotification();
 
   const {
     cartItems,
@@ -43,24 +44,32 @@ export const useCheckout = ({ selectedAddressType, selectedAddress }: UseCheckou
   const [orderNote, setOrderNote] = useState('');
   const [calculation, setCalculation] = useState<CalculateOrderResponse | null>(null);
   const [calculating, setCalculating] = useState(false);
+  const [orderType, setOrderType] = useState<'asap' | 'scheduled'>('asap');
 
   const [promotionCode, setPromotionCode] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchCart = async () => {
-      const items = await getCartItems();
+      try {
+        const items = await getCartItems();
 
-      const filtered = restaurantId
-        ? items.filter(item => item.restaurant?.id === restaurantId)
-        : items;
+        const filtered = restaurantId
+          ? items.filter(item => item.restaurant?.id === restaurantId)
+          : items;
 
-      setDisplayCartItems(filtered);
-      setTotalPrice(await getTotalPrice());
-      setLoadingCart(false);
-      if (initialLoading) setInitialLoading(false);
+        setDisplayCartItems(filtered);
+        setTotalPrice(await getTotalPrice());
+        setLoadingCart(false);
+        if (initialLoading) setInitialLoading(false);
+      } catch (error) {
+        console.error('Error fetching cart:', error);
+        showNotification('Có lỗi khi tải giỏ hàng. Vui lòng thử lại!', 'error');
+        setLoadingCart(false);
+        if (initialLoading) setInitialLoading(false);
+      }
     };
     fetchCart();
-  }, [cartItems, getCartItems, getTotalPrice, initialLoading]);
+  }, [cartItems, getCartItems, getTotalPrice, initialLoading, showNotification]);
 
   useEffect(() => {
     const fetchUserAddresses = async () => {
@@ -69,6 +78,7 @@ export const useCheckout = ({ selectedAddressType, selectedAddress }: UseCheckou
         const token = await getToken();
         if (!token) {
           setUserAddresses([]);
+          showNotification('Vui lòng đăng nhập để sử dụng địa chỉ đã lưu!', 'warning');
           return;
         }
         const profile = await userApi.getMe(token);
@@ -79,12 +89,14 @@ export const useCheckout = ({ selectedAddressType, selectedAddress }: UseCheckou
             break;
           }
         }
-      } catch {
+      } catch (error) {
+        console.error('Error fetching addresses:', error);
         setUserAddresses([]);
+        showNotification('Không thể tải danh sách địa chỉ. Vui lòng thử lại!', 'error');
       }
     };
     fetchUserAddresses();
-  }, [user, getToken]);
+  }, [user, getToken, showNotification]);
 
   useEffect(() => {
     const calc = async () => {
@@ -137,6 +149,7 @@ export const useCheckout = ({ selectedAddressType, selectedAddress }: UseCheckou
       } catch (e) {
         console.error('Failed to calculate order:', e);
         setCalculation(null);
+        showNotification('Không thể tính toán phí giao hàng. Vui lòng kiểm tra địa chỉ!', 'error');
       }
 
       setCalculating(false);
@@ -149,6 +162,7 @@ export const useCheckout = ({ selectedAddressType, selectedAddress }: UseCheckou
     selectedAddress,
     selectedAddressType,
     promotionCode,
+    showNotification,
   ]);
 
   const handleSetDefaultAddress = (addressId: string) => {
@@ -159,14 +173,27 @@ export const useCheckout = ({ selectedAddressType, selectedAddress }: UseCheckou
       }))
     );
     setSelectedUserAddressId(addressId);
+    showNotification('Đã chọn địa chỉ giao hàng!', 'success');
   };
 
   const handleUpdateQuantity = (id: string, qty: number) => {
-    updateQuantity(id, qty);
+    try {
+      updateQuantity(id, qty);
+      showNotification('Đã cập nhật số lượng!', 'success');
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+      showNotification('Không thể cập nhật số lượng. Vui lòng thử lại!', 'error');
+    }
   };
 
   const handleRemoveFromCart = (id: string) => {
-    removeFromCart(id);
+    try {
+      removeFromCart(id);
+      showNotification('Đã xóa món khỏi giỏ hàng!', 'success');
+    } catch (error) {
+      console.error('Error removing from cart:', error);
+      showNotification('Không thể xóa món khỏi giỏ hàng. Vui lòng thử lại!', 'error');
+    }
   };
 
   function parseAddress(full: string) {
@@ -183,7 +210,31 @@ export const useCheckout = ({ selectedAddressType, selectedAddress }: UseCheckou
     selectedAddressType: 'saved' | 'custom',
     selectedAddress: { full: string; latitude?: number; longitude?: number } | null
   ) => {
-    if (!user || displayCartItems.length === 0) return;
+    // Validation checks with notifications
+    if (!user) {
+      showNotification('Vui lòng đăng nhập để đặt hàng!', 'warning');
+      return;
+    }
+
+    if (displayCartItems.length === 0) {
+      showNotification('Giỏ hàng của bạn đang trống!', 'warning');
+      return;
+    }
+
+    if (selectedAddressType === 'saved' && !selectedUserAddressId) {
+      showNotification('Vui lòng chọn địa chỉ giao hàng!', 'warning');
+      return;
+    }
+
+    if (selectedAddressType === 'custom' && !selectedAddress?.full) {
+      showNotification('Vui lòng nhập địa chỉ giao hàng!', 'warning');
+      return;
+    }
+
+    if (!paymentMethod) {
+      showNotification('Vui lòng chọn phương thức thanh toán!', 'warning');
+      return;
+    }
   
     const orderPayload = {
       userId: user.id,
@@ -191,6 +242,7 @@ export const useCheckout = ({ selectedAddressType, selectedAddress }: UseCheckou
       total: totalPrice,
       note: orderNote,
       paymentMethod,
+      orderType,
       ...(selectedAddressType === 'saved'
         ? { addressId: selectedUserAddressId }
         : selectedAddress && {
@@ -204,33 +256,51 @@ export const useCheckout = ({ selectedAddressType, selectedAddress }: UseCheckou
       orderDetails: displayCartItems.map(item => ({
         foodId: item.foodId || item.id,
         quantity: String(item.quantity),
-        price: String(item.price), // optional, BE không dùng để tính
+        price: String(item.price),
         note: item.note || '',
-        discountPercent: item.discountPercent ?? 0, // ✅ THÊM discountPercent vào payload
+        discountPercent: item.discountPercent ?? 0,
         selectedToppings: item.toppings?.map((t: any) => ({
           id: t.id,
           name: t.name,
-          price: Number(t.price), // phải là number
+          price: Number(t.price),
         })),
       })),
     };
   
     try {
+      showNotification('Đang tạo đơn hàng...', 'info');
+      
       const token = await getToken();
       if (!token) {
-        console.error('User is not authenticated');
+        showNotification('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!', 'error');
         return;
       }
+      
       const response: OrderResponse = await userApi.order.createOrder(token, orderPayload);
   
       if (response.paymentUrl) {
+        showNotification('Chuyển hướng đến trang thanh toán...', 'info');
         window.location.href = response.paymentUrl;
         return;
       }
   
-      router.push(`/orders/${response.order.id}`);
-    } catch (err) {
+      showNotification('Đặt hàng thành công!', 'success');
+      router.push(`/order/${response.order.id}`);
+    } catch (err: any) {
       console.error('Failed to create order:', err);
+      
+      // Handle specific error messages
+      if (err?.response?.status === 400) {
+        showNotification('Thông tin đơn hàng không hợp lệ. Vui lòng kiểm tra lại!', 'error');
+      } else if (err?.response?.status === 401) {
+        showNotification('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!', 'error');
+      } else if (err?.response?.status === 404) {
+        showNotification('Không tìm thấy sản phẩm hoặc cửa hàng!', 'error');
+      } else if (err?.response?.status >= 500) {
+        showNotification('Lỗi hệ thống. Vui lòng thử lại sau!', 'error');
+      } else {
+        showNotification('Không thể tạo đơn hàng. Vui lòng thử lại!', 'error');
+      }
     }
   };
   
@@ -262,5 +332,7 @@ export const useCheckout = ({ selectedAddressType, selectedAddress }: UseCheckou
     calculating,
     promotionCode,
     setPromotionCode,
+    orderType,
+    setOrderType,
   };
 };

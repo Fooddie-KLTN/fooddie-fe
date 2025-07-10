@@ -181,11 +181,11 @@ export const guestService = {
         },
         async getAllRestaurants(
             page: number = 1,
-            pageSize: number = 10,
+            pageSize: number = 100,
             lat: number = 10.7769,
             lng: number = 106.6951,
         ): Promise<PaginatedResponse<Restaurant>> {
-            return apiRequest<PaginatedResponse<Restaurant>>(`/restaurants`, "GET", { query: { page, pageSize, lat, lng } });
+            return apiRequest<PaginatedResponse<Restaurant>>(`/restaurants/all`, "GET", { query: { page, pageSize, lat, lng } });
         },
         async getPreviewRestaurants(
             page: number = 1,
