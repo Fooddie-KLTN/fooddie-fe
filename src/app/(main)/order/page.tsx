@@ -291,10 +291,9 @@ const OrderPage = () => {
       try {
         const res = await userApi.order.getMyOrders(token, 1, 50);
         setCurrentOrders(
-          res.items.filter(
-            (order) =>
-              order.status !== "completed" && order.status !== "canceled"
-          )
+          res.items
+            .filter((order) => order.status !== "completed" && order.status !== "canceled")
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         );
       } catch {
         setCurrentOrders([]);
@@ -313,7 +312,11 @@ const OrderPage = () => {
       if (!token) return;
       try {
         const res = await userApi.order.getMyOrders(token, 1, 50, "completed");
-        setCompletedOrders(res.items);
+        setCompletedOrders(
+          res.items.sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
+        );
       } catch {
         setCompletedOrders([]);
       }
@@ -337,7 +340,12 @@ const OrderPage = () => {
           PAGE_SIZE,
           statusParam
         );
-        setHistoryOrders(res.items);
+        setHistoryOrders(
+          res.items.sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
+        );
+        
         setHistoryTotalPages(res.totalPages || 1);
       } catch {
         setHistoryOrders([]);

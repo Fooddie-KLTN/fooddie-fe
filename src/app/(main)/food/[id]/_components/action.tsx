@@ -181,7 +181,7 @@ export const Action: React.FC<ActionProps> = ({ food }) => {
             <Button
               onClick={handleAddToCart}
               disabled={isAddingToCart}
-              className="flex-1 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white"
+              className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-orange-300 text-white"
             >
               {isAddingToCart ? (
                 <>
@@ -200,7 +200,7 @@ export const Action: React.FC<ActionProps> = ({ food }) => {
             <Button
               onClick={handleBuyNow}
               disabled={isAddingToCart}
-              className="flex-1 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white"
+              className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-orange-300 text-white"
             >
               Mua ngay
             </Button>
