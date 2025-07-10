@@ -202,12 +202,8 @@ function SearchPageInner() {
       sortBy
     )
     .then(res => {
-      const nameSearch = debouncedSearch.trim().toLowerCase();
-      const matched = (res.items ?? []).filter(food =>
-        food.name.toLowerCase().includes(nameSearch) ||
-        food.description?.toLowerCase().includes(nameSearch)
-      );
-      setFoods(matched);
+      // Remove the strict client-side filtering - trust the backend results
+      setFoods(res.items ?? []);
     })
     .finally(() => setLoading(false));
   }, [debouncedSearch, selectedCategories, minPrice, maxPrice, radius, sortBy, showingAll, allFoods, categories.length]);
