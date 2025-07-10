@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CloudUploadIcon, FilterIcon, PlusIcon, SortAscIcon, Edit2Icon, TrashIcon } from "lucide-react";
+import { Edit2Icon, TrashIcon } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -30,16 +30,7 @@ interface User {
     createdAt: string;
     status: string;
 }
-interface UserHistory {
-    id: string;
-    name: string;
-    email: string;
-    phone: string;
-    username: string;
-    notificationType: 'email' | 'none';
-    createdAt: string;
-    status: 'complete' | 'pending' | 'error';
-}
+
 interface PaginationState {
     currentPage: number;
     totalPages: number;
@@ -96,28 +87,7 @@ const UserAdminPage: React.FC = () => {
 
     const [users, setUsers] = useState<User[]>([]);
     const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-    const [userHistory,] = useState<UserHistory[]>([
-        {
-            id: '1',
-            name: 'Nguyen Van A',
-            email: 'nguyenvana@example.com',
-            phone: '0912345678',
-            username: 'nguyenvana',
-            notificationType: 'email',
-            createdAt: '2024-03-07',
-            status: 'complete'
-        },
-        {
-            id: '2',
-            name: 'Tran Thi B',
-            email: 'tranthib@example.com',
-            phone: '0987654321',
-            username: 'tranthib',
-            notificationType: 'none',
-            createdAt: '2024-03-06',
-            status: 'pending'
-        }
-    ]);
+
     const [isLoading, setIsLoading] = useState(true);
     const [pagination, setPagination] = useState<PaginationState>({
         currentPage: 1,
@@ -231,31 +201,12 @@ const UserAdminPage: React.FC = () => {
         setIsCsvModalOpen(true);
     };
 
-    // Header actions configuration
-    const headerActions = [
-        {
-            label: "Thêm nhiều",
-            icon: <CloudUploadIcon className="w-5 h-5" />,
-            onClick: () => setIsCsvModalOpen(true),
-            variant: 'secondary' as const,
-        },
-        {
-            label: "Thêm tài khoản",
-            icon: <PlusIcon className="w-5 h-5" />,
-            onClick: () => setIsAddUserModalOpen(true),
-            variant: 'primary' as const,
-        },
-    ];
 
     // Tab configuration
     const tabs = [
         {
             key: 'user',
             label: 'Danh sách người dùng'
-        },
-        {
-            key: 'history',
-            label: 'Lịch sử thêm người dùng'
         }
     ];
 
@@ -268,15 +219,6 @@ const UserAdminPage: React.FC = () => {
         { header: "Status", accessor: "status" as keyof User, sortable: true }
     ];
 
-    // User history table columns configuration
-    const historyColumns: Column<UserHistory>[] = [
-        { header: "Name", accessor: "name" as keyof UserHistory },
-        { header: "Phone", accessor: "phone" as keyof UserHistory },
-        { header: "Username", accessor: "username" as keyof UserHistory },
-        { header: "Notification", accessor: "notificationType" as keyof UserHistory },
-        { header: "Created At", accessor: "createdAt" as keyof UserHistory },
-        { header: "Status", accessor: "status" as keyof UserHistory }
-    ];
 
     // Actions for user rows
     const userActions: Action[] = [
@@ -292,28 +234,6 @@ const UserAdminPage: React.FC = () => {
         }
     ];
 
-    // Actions for history rows
-    const historyActions: Action[] = [
-        {
-            label: "View Details",
-            icon: <Edit2Icon className="h-4 w-4" />,
-            onClick: (id) => console.log(`View history details ${id}`),
-        }
-    ];
-
-    const filterControls = (
-        <>
-            <button className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <SortAscIcon className="w-5 h-5" />
-                <span>Sort</span>
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <FilterIcon className="w-5 h-5" />
-                <span>Filter</span>
-            </button>
-        </>
-    );
-
 
 
     return (
@@ -322,7 +242,6 @@ const UserAdminPage: React.FC = () => {
             <Header
                 title="Quản lý người dùng"
                 description="Theo dõi, quản lý danh sách người dùng, học viên"
-                actions={headerActions}
             />
 
             {/* Navigation Tabs */}
@@ -332,31 +251,11 @@ const UserAdminPage: React.FC = () => {
                 tabs={tabs}
             />
 
-            {/* Conditional Rendering Based on Active Tab */}
-            {activeTab === 'history' ? (
-                <div className="overflow-x-auto">
-                    <SearchAndFilters
-                        searchQuery={searchQuery}
-                        onSearchChange={setSearchQuery}
-                        searchPlaceholder="Tìm người dùng"
-                    />
-
-                    <Table
-                        columns={historyColumns}
-                        data={userHistory}
-                        showActions={true}
-                        actions={historyActions}
-                        coloredStatus={true}
-                    />
-                </div>
-
-            ) : (
                 <>
                     <SearchAndFilters
                         searchQuery={searchQuery}
                         onSearchChange={setSearchQuery}
                         searchPlaceholder="Tìm người dùng"
-                        additionalFilters={filterControls}
                     />
 
                     <div className="overflow-x-auto">
@@ -392,7 +291,6 @@ const UserAdminPage: React.FC = () => {
                     />
                 </>
 
-            )}
 
             {/* Single User Modal */}
             {isDesktop ? (

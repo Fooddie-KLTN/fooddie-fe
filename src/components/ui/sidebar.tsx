@@ -15,7 +15,6 @@ import {
   LibraryBigIcon,
   LogOutIcon,
   MenuIcon,
-  SettingsIcon,
   TicketPercentIcon,
   UserPenIcon,
   UsersIcon,
@@ -90,7 +89,7 @@ const tabs: Tab[] = [
 ];
 
 const additionalTabs: PublicTab[] = [
-  { label: "Cài đặt", icon: SettingsIcon, path: "/settings" },
+
 ];
 
 /**

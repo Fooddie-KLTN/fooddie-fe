@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PlusIcon, Edit2Icon, TrashIcon, FilterIcon, SortAscIcon } from "lucide-react";
+import { PlusIcon, Edit2Icon, TrashIcon } from "lucide-react";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
@@ -160,19 +160,6 @@ const CategoryAdminPage: React.FC = () => {
     }
   ];
 
-  const filterControls = (
-    <>
-      <button className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-        <SortAscIcon className="w-5 h-5" />
-        <span>Sắp xếp</span>
-      </button>
-      <button className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-        <FilterIcon className="w-5 h-5" />
-        <span>Lọc</span>
-      </button>
-    </>
-  );
-
   return (
     <div className="p-4">
       <Header
@@ -192,7 +179,6 @@ const CategoryAdminPage: React.FC = () => {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         searchPlaceholder="Tìm danh mục theo tên"
-        additionalFilters={filterControls}
       />
 
       <div className="overflow-x-auto">

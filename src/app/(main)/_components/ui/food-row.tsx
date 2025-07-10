@@ -4,6 +4,7 @@ import Link from "next/link";
 import FoodCard from "../food-card";
 import { useRef } from "react";
 import { FoodPreview } from "@/interface";
+import { useRouter } from "next/navigation";
 
 interface FoodRowProps {
   foods: FoodPreview[];
@@ -23,6 +24,8 @@ export default function FoodRow({
   const displayFoods = foods.length > maxItems ? foods : foods.slice(0, maxItems);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
+  const router = useRouter();
+
   // Scroll functions
   const scrollLeft = () => {
     if (scrollContainerRef.current) {
@@ -72,7 +75,7 @@ export default function FoodRow({
           
           {viewAllLink && foods.length > maxItems && (
             <Link href={viewAllLink}>
-              <Button variant="ghost" className="text-primary flex items-center">
+              <Button variant="ghost" className="text-primary flex items-center" onClick={()=> router.push('/search')}>
                 View all <ChevronRightIcon className="h-4 w-4 ml-1" />
               </Button>
             </Link>

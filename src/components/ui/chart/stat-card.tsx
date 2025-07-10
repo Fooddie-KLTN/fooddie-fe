@@ -14,7 +14,6 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, previousValue, change
     <div className="bg-white p-6 rounded-lg shadow-md">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
-        <button className="text-blue-500 hover:underline">Chi tiết</button>
       </div>
       <p className="text-2xl font-bold">{value}</p>
       <p className=" text-md text-gray-500">Previous: {previousValue}</p>

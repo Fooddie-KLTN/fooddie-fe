@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import LineChart from '@/components/ui/chart/line-chart';
 import StatCard from '@/components/ui/chart/stat-card';
 import BarChart from '@/components/ui/chart/bar-chart';
-import { Calendar1Icon, ChevronRightIcon } from 'lucide-react';
+import { Calendar1Icon } from 'lucide-react';
 import { adminService } from '@/api/admin';
 import { useAuth } from '@/context/auth-context';
 
@@ -304,15 +304,7 @@ const AdminPage = () => {
         setSelectedPeriod(period);
     };
 
-    // Header configuration
-    const headerActions = [
-        {
-            label: "Export Report",
-            icon: <ChevronRightIcon className="w-5 h-5" />,
-            onClick: () => console.log("Export report"),
-            variant: 'secondary' as const,
-        },
-    ];
+
 
 
     // Loading state
@@ -322,7 +314,6 @@ const AdminPage = () => {
                 <Header 
                     title="Thống kê"
                     description="Đang tải dữ liệu thống kê..."
-                    actions={headerActions}
                 />
                 <div className="flex items-center justify-center h-64">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -338,7 +329,6 @@ const AdminPage = () => {
                 <Header 
                     title="Thống kê"
                     description="Có lỗi xảy ra khi tải dữ liệu"
-                    actions={headerActions}
                 />
                 <div className="flex items-center justify-center h-64">
                     <div className="text-center">
@@ -361,7 +351,6 @@ const AdminPage = () => {
             <Header 
                 title="Thống kê"
                 description="Quan sát dữ liệu thống kê hệ thống trong thời gian thực"
-                actions={headerActions}
             />
 
 

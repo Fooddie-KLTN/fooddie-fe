@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CloudUploadIcon, FilterIcon, PlusIcon, SortAscIcon, TrashIcon } from "lucide-react";
+import { PlusIcon, TrashIcon } from "lucide-react";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
@@ -19,7 +19,6 @@ type SortDirection = 'asc' | 'desc' | null;
 
 const PromotionsAdminPage: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [, setIsCsvModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<keyof Promotion | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
@@ -217,26 +216,9 @@ const PromotionsAdminPage: React.FC = () => {
     },
   ];
 
-  const filterControls = (
-    <>
-      <button className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
-        <SortAscIcon className="w-5 h-5" />
-        <span>Sort</span>
-      </button>
-      <button className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
-        <FilterIcon className="w-5 h-5" />
-        <span>Filter</span>
-      </button>
-    </>
-  );
+
 
   const headerActions = [
-    {
-      label: "Thêm nhiều",
-      icon: <CloudUploadIcon className="w-5 h-5" />,
-      onClick: () => setIsCsvModalOpen(true),
-      variant: "secondary" as const,
-    },
     {
       label: "Thêm mã",
       icon: <PlusIcon className="w-5 h-5" />,
@@ -257,7 +239,6 @@ const PromotionsAdminPage: React.FC = () => {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         searchPlaceholder="Tìm theo mã code"
-        additionalFilters={filterControls}
       />
 
       <div className="overflow-x-auto">

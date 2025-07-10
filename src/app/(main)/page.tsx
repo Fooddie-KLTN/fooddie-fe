@@ -169,14 +169,14 @@ export default function Home() {
           foods={topSellingFoods}
           formatPrice={formatPrice}
           name="Nổi tiếng"
-          viewAllLink="/foods"
+          viewAllLink="/search"
         />
 
         <FoodRow
           foods={nearbyFoods}
           formatPrice={formatPrice}
           name="Gần đây"
-          viewAllLink="/foods"
+          viewAllLink="/search"
         />
 
         <CategorySection

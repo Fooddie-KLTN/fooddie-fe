@@ -2,7 +2,6 @@
 
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment } from "react";
-import { X } from "lucide-react";
 
 interface SheetProps {
   open: boolean;
@@ -49,7 +48,6 @@ interface SheetContentProps {
 
 export function SheetContent({
   children,
-  onClose,
   className = "",
   side = "right",
 }: SheetContentProps) {
