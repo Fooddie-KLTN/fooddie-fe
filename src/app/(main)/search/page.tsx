@@ -19,6 +19,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useSearchParams, useRouter } from "next/navigation"; // Add useRouter import
 import { CameraIcon, SlidersHorizontal, X, Filter, ExternalLink } from "lucide-react";
 import ImageSearchModal from "../_components/image-search";
+import FoodCard from "../_components/food-card";
 
 type FoodSortType = 'newest' | 'nearby' | 'hot' | 'most_review' | 'most_buy' | 'rating' | 'price' | 'name';
 
@@ -218,12 +219,6 @@ function SearchPageInner() {
     }
   };
 
-  // Handle food click - navigate to food detail page
-  const handleFoodClick = (foodId: string | undefined) => {
-    if (foodId) {
-      router.push(`/food/${foodId}`);
-    }
-  };
 
   // Handle category checkbox
   const handleCategory = (id: string) => {
@@ -424,6 +419,16 @@ function SearchPageInner() {
       </div>
     </div>
   );
+
+  // Other existing code...
+
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
+    }).format(price);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -640,72 +645,20 @@ function SearchPageInner() {
                       <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2" 
                            style={{ scrollSnapType: 'x mandatory' }}>
                         {group.foods.map((food, foodIndex) => (
-                          <Card 
-                            key={food.id} 
-                            className="flex-shrink-0 w-64 overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer relative"
-                            style={{ scrollSnapAlign: 'start' }}
-                            onClick={() => handleFoodClick(food.id )}
-                          >
-                            <div className="aspect-[4/3] relative overflow-hidden">
-                              <img 
-                                src={food.image || food.imageUrls?.[0] || '/placeholder-food.jpg'} 
-                                alt={food.name}
-                                className="w-full h-full object-cover transition-transform duration-200 hover:scale-105"
-                              />
-                              {food.discountPercent && (
-                                <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-md shadow-sm">
-                                  -{food.discountPercent}%
-                                </div>
-                              )}
-                              {food.status === 'soldout' && (
-                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                                  <span className="text-white font-semibold">Hết hàng</span>
-                                </div>
-                              )}
-                              {/* Show food ranking within restaurant for certain sorts */}
+                          <div key={food.id} className="flex-shrink-0 w-72" style={{ scrollSnapAlign: 'start' }}>
+                            {/* Show food ranking within restaurant for certain sorts */}
+                            <div className="relative">
                               {(sortBy === 'rating' || sortBy === 'most_buy' || sortBy === 'hot') && (
-                                <div className="absolute top-2 right-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full">
+                                <div className="absolute top-2 right-2 z-10 bg-orange-500 text-white text-xs px-2 py-1 rounded-full">
                                   #{foodIndex + 1}
                                 </div>
                               )}
+                              <FoodCard 
+                                food={food} 
+                                formatPrice={formatPrice}
+                              />
                             </div>
-                            <CardContent className="p-4">
-                              <h4 className="font-semibold text-gray-900 mb-1 line-clamp-1 text-sm hover:text-orange-600 transition-colors">
-                                {food.name}
-                              </h4>
-                              <p className="text-xs text-gray-600 mb-2 line-clamp-2 leading-relaxed">
-                                {food.description}
-                              </p>
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="font-bold text-orange-600 text-sm">
-                                  {typeof food.price === 'number' 
-                                    ? food.price.toLocaleString('vi-VN') + 'đ'
-                                    : food.price
-                                  }
-                                </span>
-                                {food.rating && (
-                                  <span className="text-xs text-gray-600 flex items-center gap-1">
-                                    <span className="text-yellow-500">⭐</span>
-                                    {food.rating}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center justify-between text-xs text-gray-500">
-                                {food.preparationTime && (
-                                  <span className="flex items-center gap-1">
-                                    <span>⏱️</span>
-                                    {food.preparationTime} phút
-                                  </span>
-                                )}
-                                {food.soldCount && (
-                                  <span className="flex items-center gap-1">
-                                    <span>🔥</span>
-                                    Đã bán {food.soldCount}
-                                  </span>
-                                )}
-                              </div>
-                            </CardContent>
-                          </Card>
+                          </div>
                         ))}
                         
                         {/* Show more card - also clickable */}
