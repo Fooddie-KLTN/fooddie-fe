@@ -19,7 +19,7 @@ export default function CartDrawer() {
         {/* Header tùy chỉnh */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-brown-800">Giỏ hàng</h2>
-          <button onClick={closeCartDrawer} className="text-gray-600 hover:text-black">
+          <button onClick={closeCartDrawer} className="text-gray-600 hover:text-black" title="Đóng giỏ hàng">
             <X size={20} />
           </button>
         </div>

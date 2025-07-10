@@ -104,13 +104,17 @@ export default function HeroSection({ searchQuery, setSearchQuery, onSearch, sug
                       className="flex items-center px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors duration-150 border-b border-gray-50 last:border-b-0"
                       onClick={() => handleSuggestionClick(food)}
                     >
-                      {/* Food image */}
+                      {/* Food image with fallback */}
                       <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                         <Image
                           src={food.image || '/assets/food-placeholder.png'}
                           alt={food.name}
                           fill
                           className="object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/assets/food-placeholder.png';
+                          }}
                         />
                       </div>
                       
