@@ -5,9 +5,9 @@ import { guestService } from "@/api/guest";
 import { Restaurant } from "@/interface";
 import { useNotification } from "@/components/ui/notification";
 import MapView from "./_components/map-view";
+import FallbackMap from "./_components/fallback-map";
 import RestaurantSidebar from "./_components/restaurant-sidebar";
 import LocationControls from "./_components/location-controls";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MapPin, Loader2, Menu, X } from "lucide-react";
 import { useGeo } from "@/context/geolocation-context";
@@ -28,6 +28,42 @@ export default function MapPage() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [showSidebar, setShowSidebar] = useState(false); // For mobile toggle
+  const [canUseMap, setCanUseMap] = useState(false);
+  const [mapInitialized, setMapInitialized] = useState(false);
+
+  // Check WebGL support and Mapbox token
+  useEffect(() => {
+    const checkMapSupport = () => {
+      try {
+        // Check if we have the token
+        if (!process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN) {
+          showNotification("Chuyển sang chế độ danh sách do thiếu cấu hình bản đồ", "warning");
+          setCanUseMap(false);
+          setMapInitialized(true);
+          return;
+        }
+
+        // Check WebGL support
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        
+        if (!gl) {
+          showNotification("Chuyển sang chế độ danh sách do trình duyệt không hỗ trợ WebGL", "warning");
+          setCanUseMap(false);
+        } else {
+          setCanUseMap(true);
+        }
+      } catch (error) {
+        console.error('Error checking map support:', error);
+        showNotification("Chuyển sang chế độ danh sách do lỗi khởi tạo", "warning");
+        setCanUseMap(false);
+      }
+      
+      setMapInitialized(true);
+    };
+
+    checkMapSupport();
+  }, [showNotification]);
 
   // Show geo error notification
   useEffect(() => {
@@ -181,31 +217,82 @@ export default function MapPage() {
     }
   }, [loading, hasMore, fetchRestaurants]);
 
-  // Memoize expensive computations
-  const memoizedMapView = useMemo(() => (
-    <MapView
-      restaurants={restaurants}
-      center={mapCenter}
-      userLocation={userLocation}
-      selectedRestaurant={selectedRestaurant}
-      onRestaurantSelect={handleRestaurantSelect}
-      onMapClick={handleMapClick}
-    />
-  ), [restaurants, mapCenter, userLocation, selectedRestaurant, handleRestaurantSelect, handleMapClick]);
+  // Memoize map view component with error boundary
+  const memoizedMapView = useMemo(() => {
+    if (!mapInitialized) {
+      return (
+        <div className="h-full flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-orange-500" />
+            <p className="text-gray-600">Đang khởi tạo bản đồ...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (canUseMap) {
+      try {
+        return (
+          <MapView
+            restaurants={restaurants}
+            center={mapCenter}
+            userLocation={userLocation}
+            selectedRestaurant={selectedRestaurant}
+            onRestaurantSelect={handleRestaurantSelect}
+            onMapClick={handleMapClick}
+          />
+        );
+      } catch (error) {
+        console.error('Error rendering MapView:', error);
+        return (
+          <FallbackMap
+            restaurants={restaurants}
+            selectedRestaurant={selectedRestaurant}
+            onRestaurantSelect={handleRestaurantSelect}
+          />
+        );
+      }
+    } else {
+      return (
+        <FallbackMap
+          restaurants={restaurants}
+          selectedRestaurant={selectedRestaurant}
+          onRestaurantSelect={handleRestaurantSelect}
+        />
+      );
+    }
+  }, [
+    mapInitialized,
+    canUseMap,
+    restaurants,
+    mapCenter,
+    userLocation,
+    selectedRestaurant,
+    handleRestaurantSelect,
+    handleMapClick
+  ]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="mb-6">
+    <div className="h-screen bg-gray-50 flex flex-col">
+      {/* Header - Fixed at top */}
+      <div className="bg-white shadow-sm border-b flex-shrink-0">
+        <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Bản đồ nhà hàng
+              <h1 className="text-2xl font-bold text-gray-900">
+                {canUseMap ? 'Bản đồ nhà hàng' : 'Danh sách nhà hàng'}
               </h1>
-              <p className="text-gray-600">
-                Khám phá các nhà hàng gần bạn trên bản đồ
+              <p className="text-gray-600 text-sm">
+                {canUseMap 
+                  ? 'Khám phá các nhà hàng gần bạn trên bản đồ'
+                  : 'Danh sách các nhà hàng gần bạn'
+                }
               </p>
+              {!canUseMap && mapInitialized && (
+                <p className="text-sm text-amber-600 mt-1">
+                  💡 Đang sử dụng chế độ danh sách
+                </p>
+              )}
             </div>
             
             {/* Mobile Sidebar Toggle */}
@@ -222,82 +309,92 @@ export default function MapPage() {
             </Button>
           </div>
         </div>
+      </div>
 
-        {/* Location Controls */}
-        <LocationControls
-          onGetLocation={handleGetLocation}
-          geoLoading={geoLoading}
-          userLocation={userLocation}
-          onRadiusChange={setRadius}
-          radius={radius}
-        />
+      {/* Location Controls - Fixed below header */}
+      <div className="bg-white border-b flex-shrink-0">
+        <div className="container mx-auto px-4 py-3">
+          <LocationControls
+            onGetLocation={handleGetLocation}
+            geoLoading={geoLoading}
+            userLocation={userLocation}
+            onRadiusChange={setRadius}
+            radius={radius}
+          />
+        </div>
+      </div>
 
-        {/* Main Content */}
-        <div className="relative">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
-            {/* Restaurant Sidebar - Hidden on mobile, shown in desktop */}
-            <div className={`
-              lg:col-span-1 
-              ${showSidebar ? 'block' : 'hidden lg:block'} 
-              ${showSidebar ? 'absolute inset-0 z-50 lg:relative lg:z-auto' : ''}
-              ${showSidebar ? 'bg-white lg:bg-transparent' : ''}
-              ${showSidebar ? 'p-4 lg:p-0' : ''}
-              ${showSidebar ? 'shadow-xl lg:shadow-none' : ''}
-              ${showSidebar ? 'rounded-lg lg:rounded-none' : ''}
-            `}>
-              <div className="h-full">
-                <RestaurantSidebar
-                  restaurants={restaurants}
-                  loading={loading}
-                  selectedRestaurant={selectedRestaurant}
-                  onRestaurantSelect={handleRestaurantSelect}
-                  onLoadMore={handleLoadMore}
-                  hasMore={hasMore}
-                />
-              </div>
-            </div>
-
-            {/* Map */}
-            <div className="lg:col-span-2">
-              <Card className="h-full overflow-hidden">
-                {loading && restaurants.length === 0 ? (
-                  <div className="h-full flex items-center justify-center">
-                    <div className="text-center">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-orange-500" />
-                      <p className="text-gray-600">Đang tải bản đồ...</p>
-                    </div>
-                  </div>
-                ) : (
-                  memoizedMapView
-                )}
-              </Card>
-            </div>
+      {/* Main Content - Flex grow to fill remaining space */}
+      <div className="flex-1 relative overflow-hidden">
+        <div className="flex h-full">
+          {/* Restaurant Sidebar - Fixed width with scroll */}
+          <div className={`
+            w-80 flex-shrink-0 bg-white border-r
+            ${showSidebar ? 'block' : 'hidden lg:block'} 
+            ${showSidebar ? 'absolute inset-y-0 left-0 z-50 shadow-xl lg:relative lg:shadow-none' : ''}
+            h-full overflow-y-auto
+          `}>
+            <RestaurantSidebar
+              restaurants={restaurants}
+              loading={loading}
+              selectedRestaurant={selectedRestaurant}
+              onRestaurantSelect={handleRestaurantSelect}
+              onLoadMore={handleLoadMore}
+              hasMore={hasMore}
+            />
           </div>
 
-          {/* Mobile Overlay Background */}
-          {showSidebar && (
-            <div 
-              className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-              onClick={() => setShowSidebar(false)}
-            />
-          )}
+          {/* Map/List View - Flex grow to fill remaining space */}
+          <div className="flex-1 h-full">
+            {loading && restaurants.length === 0 ? (
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-orange-500" />
+                  <p className="text-gray-600">Đang tải dữ liệu...</p>
+                </div>
+              </div>
+            ) : (
+              memoizedMapView
+            )}
+          </div>
         </div>
 
-        {/* Status Info */}
-        <div className="mt-4 text-center text-sm text-gray-600">
-          {userLocation ? (
-            <span className="flex items-center justify-center gap-1">
-              <MapPin className="h-4 w-4 text-green-500" />
-              Vị trí hiện tại: {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
+        {/* Mobile Overlay Background */}
+        {showSidebar && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+            onClick={() => setShowSidebar(false)}
+          />
+        )}
+      </div>
+
+      {/* Status Info - Fixed at bottom */}
+      <div className="bg-white border-t flex-shrink-0 py-2">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-center gap-4 flex-wrap text-sm text-gray-600">
+            {userLocation ? (
+              <span className="flex items-center gap-1">
+                <MapPin className="h-4 w-4 text-green-500" />
+                Vị trí hiện tại: {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
+              </span>
+            ) : geoLoading ? (
+              <span className="flex items-center gap-1">
+                <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
+                Đang lấy vị trí hiện tại...
+              </span>
+            ) : (
+              <span>Chưa có thông tin vị trí. Nhấn &quot;Lấy vị trí hiện tại&quot; để cập nhật.</span>
+            )}
+            
+            {/* View mode indicator */}
+            <span className={`text-xs px-2 py-1 rounded ${
+              canUseMap 
+                ? 'bg-blue-100 text-blue-800' 
+                : 'bg-gray-100 text-gray-800'
+            }`}>
+              {canUseMap ? 'Chế độ bản đồ' : 'Chế độ danh sách'}
             </span>
-          ) : geoLoading ? (
-            <span className="flex items-center justify-center gap-1">
-              <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
-              Đang lấy vị trí hiện tại...
-            </span>
-          ) : (
-            <span>Chưa có thông tin vị trí. Nhấn &quot;Lấy vị trí hiện tại&quot; để cập nhật.</span>
-          )}
+          </div>
         </div>
       </div>
     </div>

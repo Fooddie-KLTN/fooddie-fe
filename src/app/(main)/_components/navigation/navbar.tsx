@@ -23,22 +23,14 @@ import useScreen from "@/hooks/use-screen";
 import { useEffect, useState } from "react";
 
 export default function Navbar() {
-  // State for mobile menu toggle
   const [state, setState] = useState<boolean>(false);
-
-  // State for dropdown menu management
   const [dropdownState, setDropdownState] = useState({
     isActive: false,
     idx: 0,
   });
 
-  // Get authentication context
   const { user } = useAuth();
-
-  // Get modal context for login/register
   const { openModal } = useAuthModal();
-
-  // Get screen dimensions for responsive behavior
   const windowDimensions = useScreen();
 
   // Close mobile menu when screen size changes to desktop
@@ -50,41 +42,58 @@ export default function Navbar() {
 
   // Close dropdown when clicking outside navigation
   useEffect(() => {
-    document.onclick = (e) => {
+    const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (!target.closest(".nav-menu"))
+      if (!target.closest(".nav-menu")) {
         setDropdownState({ isActive: false, idx: 0 });
+      }
     };
-  }, []);
+
+    if (dropdownState.isActive) {
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
+    }
+  }, [dropdownState.isActive]);
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (state) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [state]);
 
   return (
     <>
-        <header className="sticky top-0 z-50 w-full navbar-gradient shadow-md">
+      <header className="sticky top-0 z-50 w-full bg-primary shadow-md">
+        <nav className="relative">
+          <div className="items-center gap-x-6 px-4 max-w-screen-2xl mx-auto lg:flex lg:px-8">
+            <NavbarBrand state={state} setState={setState} />
+            <NavbarMenu
+              state={state}
+              navigation={navigation}
+              dropdownState={dropdownState}
+              setDropdownState={setDropdownState}
+              user={user}
+              openModal={openModal}
+              windowDimensions={windowDimensions}
+            />
+          </div>
+        </nav>
+      </header>
 
-      <nav
-        className={``}
-      >
-        <div className="items-center gap-x-6 px-4 max-w-screen-2xl mx-auto lg:flex lg:px-8">
-          <NavbarBrand state={state} setState={setState} />
-          <NavbarMenu
-            state={state}
-            navigation={navigation}
-            dropdownState={dropdownState}
-            setDropdownState={setDropdownState}
-            user={user}
-            openModal={openModal}
-            windowDimensions={windowDimensions}
-          />
-        </div>
-      </nav>
+      {/* Mobile menu overlay */}
       {state && (
         <div
-          className="z-10 fixed top-0 w-screen h-screen bg-black/20 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm lg:hidden z-40"
           onClick={() => setState(false)}
         />
       )}
-            {/* Existing navbar content */}
-    </header>
     </>
   );
 }

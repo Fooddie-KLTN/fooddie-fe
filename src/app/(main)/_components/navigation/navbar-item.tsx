@@ -12,7 +12,7 @@ import {
   NavItem,
   SubNavItem,
 } from "@/app/(main)/_components/navigation/types";
-import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import { ChevronDownIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 
@@ -22,13 +22,19 @@ import { useEffect, useRef } from "react";
 const SubNavItemComponent = ({ item }: { item: SubNavItem }) => (
   <Link
     href={item.path}
-    className="block transition-colors hover:bg-gray-50 rounded-md p-2"
+    className="
+      block transition-colors hover:bg-gray-50 rounded-md p-3
+      lg:hover:bg-gray-50 hover:bg-white/10
+      touch-manipulation
+    "
   >
     <div className="max-w-xs flex gap-3 text-base">
-      <span className="flex-none text-primary">{item.icon}</span>
-      <span className="flex-1 text-black font-semibold">
+      <span className="flex-none text-primary lg:text-primary text-white">
+        {item.icon}
+      </span>
+      <span className="flex-1 text-white lg:text-black font-semibold">
         {item.title}
-        <p className="lg:pr-6 text-wrap break-after-all text-teriary font-light mt-1">
+        <p className="lg:pr-6 text-wrap break-after-all text-white/70 lg:text-teriary font-light mt-1">
           {item.desc}
         </p>
       </span>
@@ -41,10 +47,8 @@ export default function NavigationItems({
   dropdownState,
   setDropdownState,
 }: NavigationItemsProps) {
-  // Reference to detect clicks outside dropdown
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -61,9 +65,6 @@ export default function NavigationItems({
     };
   }, [dropdownState.idx, setDropdownState]);
 
-  /**
-   * Toggle dropdown state for a specific navigation item
-   */
   const toggleDropdown = (idx: number) => {
     setDropdownState({
       idx,
@@ -75,7 +76,7 @@ export default function NavigationItems({
   return (
     <div
       ref={dropdownRef}
-      className="flex flex-col lg:flex-row lg:items-center lg:space-x-6"
+      className="flex flex-col lg:flex-row lg:items-center lg:space-x-6 space-y-2 lg:space-y-0"
     >
       {navigation.map((item: NavItem, idx: number) => (
         <li className="flex-none" key={`nav-item-${idx}`}>
@@ -85,7 +86,15 @@ export default function NavigationItems({
               <button
                 title="Toggle dropdown"
                 type="button"
-                className="w-full font-semibold text-white hover:text-primary flex items-center justify-between gap-1 text-teriary text-base p-2 rounded-md hover:bg-gray-50 transition-colors"
+                className="
+                  w-full font-semibold text-white hover:text-primary 
+                  flex items-center justify-between gap-1 text-base 
+                  p-3 lg:p-2 rounded-lg lg:rounded-md 
+                  hover:bg-white lg:hover:bg-gray-50 
+                  transition-all duration-200 ease-in-out
+                  touch-manipulation
+                  active:bg-white lg:active:bg-gray-100 hover:bg-white
+                "
                 onClick={() => toggleDropdown(idx)}
                 aria-expanded={
                   dropdownState.idx === idx && dropdownState.isActive
@@ -93,12 +102,15 @@ export default function NavigationItems({
                 aria-haspopup="true"
               >
                 {item.title}
-                {dropdownState.idx === idx &&
-                dropdownState.isActive ? (
-                  <ChevronUpIcon className="h-4 w-4" />
-                ) : (
+                <div className={`
+                  transition-transform duration-200 ease-in-out
+                  ${dropdownState.idx === idx && dropdownState.isActive 
+                    ? 'rotate-180' 
+                    : 'rotate-0'
+                  }
+                `}>
                   <ChevronDownIcon className="h-4 w-4" />
-                )}
+                </div>
               </button>
 
               {/* Dropdown menu */}
@@ -106,13 +118,19 @@ export default function NavigationItems({
                 dropdownState.idx === idx &&
                 dropdownState.isActive && (
                   <div
-                    className="mt-2 z-10 bg-background lg:absolute lg:border lg:shadow-md lg:mt-0 lg:rounded-xl w-64 lg:w-72"
+                    className="
+                      mt-2 z-10 bg-white/5 lg:bg-background 
+                      lg:border lg:shadow-md lg:mt-0 lg:rounded-xl 
+                      w-full lg:w-72 rounded-lg
+                      animate-in slide-in-from-top-2 fade-in-0
+                      lg:absolute
+                    "
                     style={{
                       top: "100%",
                       left: 0,
                     }}
                   >
-                    <ul className="mx-auto mt-2  flex flex-col gap-2 lg:p-4">
+                    <ul className="mx-auto mt-2 flex flex-col gap-1 lg:gap-2 p-2 lg:p-4">
                       {item.navs?.map((navItem, subIdx: number) => (
                         <li
                           key={`subnav-${idx}-${subIdx}`}
@@ -129,7 +147,14 @@ export default function NavigationItems({
             // Regular navigation link
             <Link
               href={item.path}
-              className="block text-navigation text-white hover:text-primary p-2 rounded-md hover:bg-gray-50 transition-colors font-semibold"
+              className="
+                block text-navigation text-white hover:text-primary 
+                p-3 lg:p-2 rounded-lg lg:rounded-md 
+                hover:bg-white lg:hover:bg-gray-50 
+                transition-all duration-200 ease-in-out
+                font-semibold touch-manipulation
+                active:bg-white lg:active:bg-gray-100
+              "
             >
               {item.title}
             </Link>

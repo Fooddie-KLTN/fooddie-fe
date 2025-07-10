@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/cart-context";
 import Image from "next/image";
 import { FoodPreview } from "@/interface/index";
+import { useState } from "react";
 
 interface FoodCardProps {
     food: FoodPreview;
@@ -12,6 +13,7 @@ interface FoodCardProps {
 
 export default function FoodCard({ food, formatPrice }: FoodCardProps) {
     const { addToCart } = useCart();
+    const [imageError, setImageError] = useState(false);
 
     const handleAddToCart = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -44,16 +46,25 @@ export default function FoodCard({ food, formatPrice }: FoodCardProps) {
         ? Number(food.price) * (1 - food.discountPercent / 100)
         : Number(food.price);
 
+    // Fallback image URL
+    const fallbackImage = "/images/placeholder-food.jpg";
+    
+    // Use fallback if no image or image failed to load
+    const imageSource = imageError || !food.image ? fallbackImage : food.image;
+
     return (
         <Card className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer h-full flex flex-col">
-            <div className="relative h-48 flex-shrink-0">
+            <div className="relative h-48 flex-shrink-0 bg-gray-100">
                 <Image
-                    src={food.image}
+                    src={imageSource}
                     alt={food.name}
                     fill
                     className="object-cover"
                     sizes="288px"
                     onClick={handleOnClick}
+                    onError={() => setImageError(true)}
+                    placeholder="blur"
+                    blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
                 />
                 
                 {/* Popular badge */}
@@ -68,6 +79,18 @@ export default function FoodCard({ food, formatPrice }: FoodCardProps) {
                     <span className="absolute top-2 left-2 bg-red-600 text-white text-xs py-1 px-2 rounded-md z-10">
                         -{food.discountPercent}%
                     </span>
+                )}
+                
+                {/* No image fallback overlay */}
+                {imageError && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                        <div className="text-center text-gray-400">
+                            <svg className="w-12 h-12 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                            </svg>
+                            <p className="text-xs">Không có hình ảnh</p>
+                        </div>
+                    </div>
                 )}
                 
                 {/* Action buttons */}

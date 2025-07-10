@@ -161,14 +161,13 @@ return (
     <div className="flex-1 flex gap-2 items-center justify-center">
       {user ? (
         <>
-
           {/* Cart button */}
           <button
-            className="relative bg-transparent hover:bg-primary/10 p-2 rounded-full transition-colors"
+            className="relative bg-white text-primary hover:bg-primary hover:text-white p-2 rounded-full transition-colors"
             onClick={() => toggleCartDrawer()}
             aria-label={`Giỏ hàng (${cartItems.length})`}
           >
-            <ShoppingCartIcon />
+            <ShoppingCartIcon className="h-5 w-5" />
             {cartItems.length > 0 && (
               <span className="absolute flex items-center -top-2 -right-2 justify-center bg-primary h-5 w-5 rounded-full text-white text-xs font-bold shadow">
                 {cartItems.length}
@@ -194,32 +193,32 @@ return (
                 <DropdownMenuLabel>Thông báo</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {notifications.length > 0
-  ? notifications.map((item, idx) => (
-      <div key={item.id}>
-        <DropdownMenuItem className="p-3 cursor-pointer">
-          <div className="flex gap-2 items-center">
-            <Avatar>
-              <AvatarImage src="/default-avatar.png" alt="Avatar" />
-              <AvatarFallback>NT</AvatarFallback>
-            </Avatar>
-            <div className="px-2">
-              <p className="line-clamp-2 text-md font-medium">
-                {item.title}
-              </p>
-              <span className="text-gray-500 text-sm">
-                {item.time}
-              </span>
-            </div>
-          </div>
-        </DropdownMenuItem>
-        {idx < notifications.length - 1 && <DropdownMenuSeparator />}
-      </div>
-    ))
-  : (
-    <DropdownMenuItem className="justify-center text-gray-400">
-      Không có thông báo mới
-    </DropdownMenuItem>
-  )}
+                  ? notifications.map((item, idx) => (
+                      <div key={item.id}>
+                        <DropdownMenuItem className="p-3 cursor-pointer">
+                          <div className="flex gap-2 items-center">
+                            <Avatar>
+                              <AvatarImage src="/default-avatar.png" alt="Avatar" />
+                              <AvatarFallback>NT</AvatarFallback>
+                            </Avatar>
+                            <div className="px-2">
+                              <p className="line-clamp-2 text-md font-medium">
+                                {item.title}
+                              </p>
+                              <span className="text-gray-500 text-sm">
+                                {item.time}
+                              </span>
+                            </div>
+                          </div>
+                        </DropdownMenuItem>
+                        {idx < notifications.length - 1 && <DropdownMenuSeparator />}
+                      </div>
+                    ))
+                  : (
+                    <DropdownMenuItem className="justify-center text-gray-400">
+                      Không có thông báo mới
+                    </DropdownMenuItem>
+                  )}
                 <DropdownMenuItem className="justify-center">
 
                 </DropdownMenuItem>
@@ -227,16 +226,7 @@ return (
             </DropdownMenu>
           </div>
         </>
-      ) : (
-        <Button
-          variant="ghost"
-          className="bg-transparent hover:bg-primary/10 transition-colors"
-          size="icon"
-          aria-label="Giỏ hàng"
-        >
-          <CartIcon />
-        </Button>
-      )}
+      ) : null}
     </div>
 
     {/* User profile or login/register */}
@@ -310,15 +300,15 @@ return (
       ) : (
         <>
           <Button
-            variant="ghost"
-            className="text-base border border-transparent hover:bg-primary/10 hover:text-primary transition-colors"
+            variant="default"
+            className="text-base border-transparent bg-white text-primary hover:text-white hover:bg-primary transition-colors"
             onClick={() => openModal("login")}
           >
             Đăng nhập
           </Button>
           <Button
             variant="default"
-            className="text-base border hover:text-primary hover:border-primary transition-colors"
+            className="text-base border-transparent bg-white text-primary hover:bg-primary hover:text-white hover:border-primary transition-colors"
             onClick={() => openModal("register")}
           >
             Đăng ký

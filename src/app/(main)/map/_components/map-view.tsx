@@ -8,7 +8,7 @@ import { Restaurant } from "@/interface";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 // Initialize Mapbox token
-mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || 'pk.eyJ1IjoiZHVjcXVhbjExMDYiLCJhIjoiY21ha3J6MTJjMDE0YTJscTBvcGYxNGY3OSJ9.6xAhWXzp9u-JtoX7xGKWPA';
 
 interface MapViewProps {
   restaurants: Restaurant[];
