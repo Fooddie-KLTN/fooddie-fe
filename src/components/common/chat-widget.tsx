@@ -22,6 +22,15 @@ export default function ChatWidget() {
     }[];
   };
 
+  type OrderPreview = {
+    orderId: string;
+    totalAmount: number;
+    orderDetails: {
+      foodName: string;
+      quantity: number;
+    }[];
+  };
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -30,7 +39,17 @@ export default function ChatWidget() {
   const { getToken } = useAuth();
   const router = useRouter();
 
-  const [metadata, setMetadata] = useState({
+  const [metadata, setMetadata] = useState<{
+    orderItems: any[];
+    addresses: any[];
+    isOrdering: boolean;
+    isFoodConfirmed: boolean;
+    isRestaurantConfirmed: boolean;
+    isAddressConfirmed: boolean;
+    isPaymentConfirmed: boolean;
+    isQuickReorder?: boolean;
+    quickOrderOptions?: OrderPreview[];
+  }>({
     orderItems: [],
     addresses: [],
     isOrdering: false,
@@ -38,6 +57,8 @@ export default function ChatWidget() {
     isRestaurantConfirmed: false,
     isAddressConfirmed: false,
     isPaymentConfirmed: false,
+    isQuickReorder: false,
+    quickOrderOptions: [],
   });
 
 
@@ -107,6 +128,8 @@ export default function ChatWidget() {
         isAddressConfirmed: data.metadata?.isAddressConfirmed ?? prev.isAddressConfirmed,
         isPaymentConfirmed: data.metadata?.isPaymentConfirmed ?? prev.isPaymentConfirmed,
         orderItems: data.metadata?.orderItems ?? prev.orderItems,
+        quickOrderOptions: data.metadata?.quickOrderOptions ?? prev.quickOrderOptions,
+        isQuickReorder: data.metadata?.isQuickReorder ?? prev.isQuickReorder,
       }));
 
       receiveSound?.play();
@@ -167,6 +190,37 @@ export default function ChatWidget() {
                           : 'bg-white border border-[#9F6508] self-start ml-2'}`}
                     >
                       {msg.text}
+                      {msg.text?.includes('Bạn muốn đặt lại đơn nào?') &&
+                      metadata.isQuickReorder &&
+                      Array.isArray(metadata.quickOrderOptions) &&
+                      metadata.quickOrderOptions.length > 0 && (
+                        <div className="grid grid-cols-1 gap-2 mt-2">
+                          {metadata.quickOrderOptions.map((order, idx) => {
+                            const summary = order.orderDetails.map((d) => `${d.quantity} ${d.foodName}`).join(', ');
+                            return (
+                              <div
+                                key={idx}
+                                onClick={() => {
+                                  setInput(`${idx + 1}`);
+                                  setTimeout(() => sendMessage(), 100);
+                                }}
+                                className="border border-[#F3C871] bg-white rounded-lg p-2 shadow-sm cursor-pointer hover:shadow-md transition"
+                              >
+                                <div className="flex justify-between items-center mb-1">
+                                  <span className="text-[#9F6508] font-semibold">🧾 Đơn #{idx + 1}</span>
+                                  <span className="text-[#9F6508] font-medium text-sm">
+                                    {Number(order.totalAmount).toLocaleString()}₫
+                                  </span>
+                                </div>
+                                <div className="text-gray-600 text-xs leading-snug line-clamp-3">
+                                  {summary}
+                                </div>
+                                <div className="mt-1 text-right text-[11px] text-blue-500 italic">Nhấn để đặt lại</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                    )}
                       {msg.foodCards && msg.foodCards.length > 0 && (
                         <div className="grid grid-cols-1 gap-2 mt-2">
                           {msg.foodCards.map((food, i) => (
