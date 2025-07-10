@@ -136,9 +136,16 @@ export default function Home() {
   // Nếu có kết quả tìm kiếm thì ưu tiên hiển thị, không thì hiển thị theo danh mục
   const foodsToShow = searchedFoods !== null ? searchedFoods : filteredFoods;
 
-  // Get foods by restaurant id
+  // Updated function to get foods by restaurant id
   const getFoodsByRestaurantId = (restaurantId: string) => {
-    return foods.filter((food) => food.restaurant.id === restaurantId);
+    // First try to find foods from the restaurant's foods array
+    const restaurant = restaurants.find(r => r.id === restaurantId);
+    if (restaurant && restaurant.foods && restaurant.foods.length > 0) {
+      return restaurant.foods;
+    }
+    
+    // Fallback to searching in the general foods array
+    return foods.filter((food) => food.restaurant?.id === restaurantId);
   };
 
   // Định dạng giá tiền
