@@ -17,6 +17,11 @@ export default function FallbackMap({
 }: FallbackMapProps) {
   const router = useRouter();
 
+  const handleRestaurantClick = (restaurantId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    router.push(`/restaurant/${restaurantId}`);
+  };
+
   return (
     <div className="h-full p-4 overflow-y-auto">
       <div className="text-center mb-6">
@@ -37,9 +42,13 @@ export default function FallbackMap({
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
                 <img
-                  src={restaurant.avatar || '/images/placeholder-restaurant.jpg'}
+                  src={restaurant.avatar || '/assets/food-placeholder.png'}
                   alt={restaurant.name}
                   className="w-16 h-16 rounded-lg object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = '/assets/food-placeholder.png';
+                  }}
                 />
                 <div className="flex-1 min-w-0">
                   <h4 className="font-semibold text-gray-900 mb-1">{restaurant.name}</h4>
@@ -54,10 +63,7 @@ export default function FallbackMap({
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        router.push(`/restaurant/${restaurant.id}`);
-                      }}
+                      onClick={(e) => handleRestaurantClick(restaurant.id, e)}
                     >
                       <ExternalLink className="h-3 w-3 mr-1" />
                       Xem
